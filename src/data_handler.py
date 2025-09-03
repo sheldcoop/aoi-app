@@ -42,10 +42,11 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
         number_of_defects = 211
 
-        # Define probability distributions (skewed, not uniform)
-        row_probs = np.linspace(1, 3, total_rows)   # gradually more weight to higher X
-        row_probs = row_probs / row_probs.sum()     # normalize
-        col_probs = np.linspace(3, 1, total_cols)   # more weight to lower Y
+        # Define probability distributions (random, not uniform)
+        row_probs = np.random.rand(total_rows)      # random weights for each row
+        row_probs = row_probs / row_probs.sum()     # normalize so they sum to 1
+        
+        col_probs = np.random.rand(total_cols)      # random weights for each col
         col_probs = col_probs / col_probs.sum()
 
         defect_data = {
