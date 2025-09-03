@@ -41,7 +41,7 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         # --- Fallback Path: Generate sample data (random clusters, no caching) ---
         st.sidebar.info("No file uploaded. Displaying fresh random clustered data.")
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
-        number_of_defects = 500
+        number_of_defects = 255
 
         # Choose random cluster centers
         num_clusters = 6
