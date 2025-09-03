@@ -44,7 +44,7 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         # --- Fallback Path: Generate sample data ---
         st.sidebar.info("No file uploaded. Displaying sample data.")
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
-        number_of_defects = 1500
+        number_of_defects = 500
         defect_data = {
             'UNIT_INDEX_X': np.random.randint(0, total_rows, size=number_of_defects),
             'UNIT_INDEX_Y': np.random.randint(0, total_cols, size=number_of_defects),
