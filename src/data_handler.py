@@ -41,50 +41,31 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         df['DEFECT_TYPE'] = df['DEFECT_TYPE'].str.strip()
         
     else:
-        # --- Fallback Path: Generate sample data with random, weighted quadrants ---
+        # --- Fallback Path: Generate sample data ---
         st.sidebar.info("No file uploaded. Displaying sample data.")
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
         number_of_defects = 500
-        
-        # Generate random probabilities that sum to 1.0
-        random_weights = np.random.rand(4)
-        quadrant_probabilities = random_weights / random_weights.sum()
-        
-        st.sidebar.write("Random Quadrant Probabilities:", np.round(quadrant_probabilities, 2))
-        
-        quadrant_choices = np.random.choice(
-            ['Q1', 'Q2', 'Q3', 'Q4'],
-            size=number_of_defects,
-            p=quadrant_probabilities
-        )
-
         defect_data = {
-            'UNIT_INDEX_X': [],
-            'UNIT_INDEX_Y': [],
+            'UNIT_INDEX_X': np.random.randint(0, total_rows, size=number_of_defects),
+            'UNIT_INDEX_Y': np.random.randint(0, total_cols, size=number_of_defects),
             'DEFECT_TYPE': np.random.choice([
                 'Nick', 'Short', 'Missing Feature', 'Cut', 'Fine Short', 
                 'Pad Violation', 'Island', 'Cut/Short', 'Nick/Protrusion'
             ], size=number_of_defects)
         }
-
-        for q in quadrant_choices:
-            if q == 'Q1':
-                defect_data['UNIT_INDEX_X'].append(np.random.randint(0, panel_rows))
-                defect_data['UNIT_INDEX_Y'].append(np.random.randint(0, panel_cols))
-            elif q == 'Q2':
-                defect_data['UNIT_INDEX_X'].append(np.random.randint(0, panel_rows))
-                defect_data['UNIT_INDEX_Y'].append(np.random.randint(panel_cols, total_cols))
-            elif q == 'Q3':
-                defect_data['UNIT_INDEX_X'].append(np.random.randint(panel_rows, total_rows))
-                defect_data['UNIT_INDEX_Y'].append(np.random.randint(0, panel_cols))
-            elif q == 'Q4':
-                defect_data['UNIT_INDEX_X'].append(np.random.randint(panel_rows, total_rows))
-                defect_data['UNIT_INDEX_Y'].append(np.random.randint(panel_cols, total_cols))
-
         df = pd.DataFrame(defect_data)
-        df['QUADRANT'] = quadrant_choices
-        
+
     # --- Common Processing for both loaded and sample data ---
+    
+    # Assign Quadrant
+    conditions = [
+        (df['UNIT_INDEX_X'] < panel_rows) & (df['UNIT_INDEX_Y'] < panel_cols),
+        (df['UNIT_INDEX_X'] < panel_rows) & (df['UNIT_INDEX_Y'] >= panel_cols),
+        (df['UNIT_INDEX_X'] >= panel_rows) & (df['UNIT_INDEX_Y'] < panel_cols),
+        (df['UNIT_INDEX_X'] >= panel_rows) & (df['UNIT_INDEX_Y'] >= panel_cols)
+    ]
+    choices = ['Q1', 'Q2', 'Q3', 'Q4']
+    df['QUADRANT'] = np.select(conditions, choices, default='Other')
     
     # Coordinate Transformation
     plot_x_base = df['UNIT_INDEX_Y'] % panel_cols
@@ -96,28 +77,3 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
     
     return df
 
-# ==============================================================================
-# --- STREAMLIT APP LAYOUT ---
-# ==============================================================================
-
-def main():
-    st.set_page_config(layout="wide")
-    st.title("Defect Analysis App")
-
-    # --- Sidebar for user inputs ---
-    st.sidebar.header("Input Parameters")
-    
-    uploaded_file = st.sidebar.file_uploader("Upload an Excel file", type=["xlsx"])
-    panel_rows = st.sidebar.number_input("Panel Rows", min_value=1, value=10, step=1)
-    panel_cols = st.sidebar.number_input("Panel Columns", min_value=1, value=10, step=1)
-    gap_size = st.sidebar.number_input("Gap Size", min_value=0, value=2, step=1)
-    
-    # --- Load and display data ---
-    df_defects = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
-    
-    if not df_defects.empty:
-        st.subheader("Raw Data Preview")
-        st.dataframe(df_defects.head())
-
-if __name__ == "__main__":
-    main()
