@@ -53,7 +53,7 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         quadrant_choices = np.random.choice(
             ['Q1', 'Q2', 'Q3', 'Q4'],
             size=number_of_defects,
-            p= [0.3,0.2,0.3,0.2]
+            p= [0.5,0.1,0.1,0.3]
         )
 
         defect_data = {
