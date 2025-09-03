@@ -1,6 +1,3 @@
-# src/data_handler.py
-# This module contains all functions related to loading and processing data.
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -41,20 +38,49 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         df['DEFECT_TYPE'] = df['DEFECT_TYPE'].str.strip()
         
     else:
-        # --- Fallback Path: Generate sample data ---
+        # --- Fallback Path: Generate sample data with weighted quadrants ---
         st.sidebar.info("No file uploaded. Displaying sample data.")
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
         number_of_defects = 500
+        
+        # --- NEW CODE: Define Quadrant Probabilities ---
+        # Sum of probabilities must be 1.0
+        # In this example, Q1 gets 40%, Q2 gets 30%, Q3 gets 20%, Q4 gets 10%
+        quadrant_probabilities = [0.4, 0.3, 0.2, 0.1]
+        
+        # Use np.random.choice to select a quadrant for each defect based on probabilities
+        quadrant_choices = np.random.choice(
+            ['Q1', 'Q2', 'Q3', 'Q4'],
+            size=number_of_defects,
+            p=quadrant_probabilities
+        )
+
+        # --- NEW CODE: Generate coordinates based on the assigned quadrant ---
         defect_data = {
-            'UNIT_INDEX_X': np.random.randint(0, total_rows, size=number_of_defects),
-            'UNIT_INDEX_Y': np.random.randint(0, total_cols, size=number_of_defects),
+            'UNIT_INDEX_X': [],
+            'UNIT_INDEX_Y': [],
             'DEFECT_TYPE': np.random.choice([
                 'Nick', 'Short', 'Missing Feature', 'Cut', 'Fine Short', 
                 'Pad Violation', 'Island', 'Cut/Short', 'Nick/Protrusion'
             ], size=number_of_defects)
         }
-        df = pd.DataFrame(defect_data)
 
+        for q in quadrant_choices:
+            if q == 'Q1':
+                defect_data['UNIT_INDEX_X'].append(np.random.randint(0, panel_rows))
+                defect_data['UNIT_INDEX_Y'].append(np.random.randint(0, panel_cols))
+            elif q == 'Q2':
+                defect_data['UNIT_INDEX_X'].append(np.random.randint(0, panel_rows))
+                defect_data['UNIT_INDEX_Y'].append(np.random.randint(panel_cols, total_cols))
+            elif q == 'Q3':
+                defect_data['UNIT_INDEX_X'].append(np.random.randint(panel_rows, total_rows))
+                defect_data['UNIT_INDEX_Y'].append(np.random.randint(0, panel_cols))
+            elif q == 'Q4':
+                defect_data['UNIT_INDEX_X'].append(np.random.randint(panel_rows, total_rows))
+                defect_data['UNIT_INDEX_Y'].append(np.random.randint(panel_cols, total_cols))
+
+        df = pd.DataFrame(defect_data)
+        
     # --- Common Processing for both loaded and sample data ---
     
     # Assign Quadrant
@@ -76,4 +102,3 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
     df['plot_y'] = plot_y_base + y_offset + np.random.rand(len(df)) * 0.8 + 0.1
     
     return df
-
