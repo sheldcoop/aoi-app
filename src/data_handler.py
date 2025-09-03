@@ -1,3 +1,6 @@
+# src/data_handler.py
+# This module contains all functions related to loading and processing data.
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -38,24 +41,23 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         df['DEFECT_TYPE'] = df['DEFECT_TYPE'].str.strip()
         
     else:
-        # --- Fallback Path: Generate sample data with weighted quadrants ---
+        # --- Fallback Path: Generate sample data with random, weighted quadrants ---
         st.sidebar.info("No file uploaded. Displaying sample data.")
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
         number_of_defects = 500
         
-        # --- NEW CODE: Define Quadrant Probabilities ---
-        # Sum of probabilities must be 1.0
-        # In this example, Q1 gets 40%, Q2 gets 30%, Q3 gets 20%, Q4 gets 10%
-        quadrant_probabilities = [0.4, 0.3, 0.2, 0.1]
+        # Generate random probabilities that sum to 1.0
+        random_weights = np.random.rand(4)
+        quadrant_probabilities = random_weights / random_weights.sum()
         
-        # Use np.random.choice to select a quadrant for each defect based on probabilities
+        st.sidebar.write("Random Quadrant Probabilities:", np.round(quadrant_probabilities, 2))
+        
         quadrant_choices = np.random.choice(
             ['Q1', 'Q2', 'Q3', 'Q4'],
             size=number_of_defects,
             p=quadrant_probabilities
         )
 
-        # --- NEW CODE: Generate coordinates based on the assigned quadrant ---
         defect_data = {
             'UNIT_INDEX_X': [],
             'UNIT_INDEX_Y': [],
@@ -80,18 +82,9 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
                 defect_data['UNIT_INDEX_Y'].append(np.random.randint(panel_cols, total_cols))
 
         df = pd.DataFrame(defect_data)
+        df['QUADRANT'] = quadrant_choices
         
     # --- Common Processing for both loaded and sample data ---
-    
-    # Assign Quadrant
-    conditions = [
-        (df['UNIT_INDEX_X'] < panel_rows) & (df['UNIT_INDEX_Y'] < panel_cols),
-        (df['UNIT_INDEX_X'] < panel_rows) & (df['UNIT_INDEX_Y'] >= panel_cols),
-        (df['UNIT_INDEX_X'] >= panel_rows) & (df['UNIT_INDEX_Y'] < panel_cols),
-        (df['UNIT_INDEX_X'] >= panel_rows) & (df['UNIT_INDEX_Y'] >= panel_cols)
-    ]
-    choices = ['Q1', 'Q2', 'Q3', 'Q4']
-    df['QUADRANT'] = np.select(conditions, choices, default='Other')
     
     # Coordinate Transformation
     plot_x_base = df['UNIT_INDEX_Y'] % panel_cols
@@ -102,3 +95,29 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
     df['plot_y'] = plot_y_base + y_offset + np.random.rand(len(df)) * 0.8 + 0.1
     
     return df
+
+# ==============================================================================
+# --- STREAMLIT APP LAYOUT ---
+# ==============================================================================
+
+def main():
+    st.set_page_config(layout="wide")
+    st.title("Defect Analysis App")
+
+    # --- Sidebar for user inputs ---
+    st.sidebar.header("Input Parameters")
+    
+    uploaded_file = st.sidebar.file_uploader("Upload an Excel file", type=["xlsx"])
+    panel_rows = st.sidebar.number_input("Panel Rows", min_value=1, value=10, step=1)
+    panel_cols = st.sidebar.number_input("Panel Columns", min_value=1, value=10, step=1)
+    gap_size = st.sidebar.number_input("Gap Size", min_value=0, value=2, step=1)
+    
+    # --- Load and display data ---
+    df_defects = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
+    
+    if not df_defects.empty:
+        st.subheader("Raw Data Preview")
+        st.dataframe(df_defects.head())
+
+if __name__ == "__main__":
+    main()
