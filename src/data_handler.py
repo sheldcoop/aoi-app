@@ -13,7 +13,7 @@ import numpy as np
 def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
     """
     Loads, prepares, and caches the defect data from a user-uploaded file.
-    If no file is uploaded, it falls back to generating sample data.
+    If no file is uploaded, it falls back to generating sample data with probabilities.
     """
     if uploaded_file is not None:
         # --- Production Path: Load from uploaded Excel file ---
@@ -22,15 +22,11 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         
         # --- Data Cleaning and Validation ---
         required_columns = ['DEFECT_TYPE', 'UNIT_INDEX_X', 'UNIT_INDEX_Y']
-        # Check if all required columns are present
         if not all(col in df.columns for col in required_columns):
             st.error(f"The uploaded file is missing one of the required columns: {required_columns}")
             return pd.DataFrame() # Return empty dataframe to prevent crashes
             
-        # Select only the columns we need
         df = df[required_columns]
-        
-        # Remove rows with missing values in our key columns
         df.dropna(subset=required_columns, inplace=True)
 
         # Ensure data types are correct
@@ -41,13 +37,20 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         df['DEFECT_TYPE'] = df['DEFECT_TYPE'].str.strip()
         
     else:
-        # --- Fallback Path: Generate sample data ---
-        st.sidebar.info("No file uploaded. Displaying sample data.")
+        # --- Fallback Path: Generate sample data (non-uniform probabilities) ---
+        st.sidebar.info("No file uploaded. Displaying sample probabilistic data.")
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
         number_of_defects = 211
+
+        # Define probability distributions (skewed, not uniform)
+        row_probs = np.linspace(1, 3, total_rows)   # gradually more weight to higher X
+        row_probs = row_probs / row_probs.sum()     # normalize
+        col_probs = np.linspace(3, 1, total_cols)   # more weight to lower Y
+        col_probs = col_probs / col_probs.sum()
+
         defect_data = {
-            'UNIT_INDEX_X': np.random.randint(0, total_rows, size=number_of_defects),
-            'UNIT_INDEX_Y': np.random.randint(0, total_cols, size=number_of_defects),
+            'UNIT_INDEX_X': np.random.choice(total_rows, size=number_of_defects, p=row_probs),
+            'UNIT_INDEX_Y': np.random.choice(total_cols, size=number_of_defects, p=col_probs),
             'DEFECT_TYPE': np.random.choice([
                 'Nick', 'Short', 'Missing Feature', 'Cut', 'Fine Short', 
                 'Pad Violation', 'Island', 'Cut/Short', 'Nick/Protrusion'
@@ -76,4 +79,3 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
     df['plot_y'] = plot_y_base + y_offset + np.random.rand(len(df)) * 0.8 + 0.1
     
     return df
-
