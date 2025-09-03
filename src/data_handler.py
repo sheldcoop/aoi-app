@@ -1,6 +1,3 @@
-# src/data_handler.py
-# This module contains all functions related to loading and processing data.
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -10,45 +7,30 @@ import numpy as np
 # ==============================================================================
 
 @st.cache_data
-def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
+def load_data(uploaded_file, panel_rows, panel_cols, gap_size, quadrant_probabilities):
     """
-    Loads, prepares, and caches the defect data from a user-uploaded file.
-    If no file is uploaded, it falls back to generating sample data.
+    Loads, prepares, and caches the defect data.
+    Now accepts quadrant_probabilities as an input to break the cache.
     """
     if uploaded_file is not None:
-        # --- Production Path: Load from uploaded Excel file ---
         st.sidebar.success("Excel file uploaded successfully!")
         df = pd.read_excel(uploaded_file, engine='openpyxl')
         
-        # --- Data Cleaning and Validation ---
         required_columns = ['DEFECT_TYPE', 'UNIT_INDEX_X', 'UNIT_INDEX_Y']
-        # Check if all required columns are present
         if not all(col in df.columns for col in required_columns):
-            st.error(f"The uploaded file is missing one of the required columns: {required_columns}")
-            return pd.DataFrame() # Return empty dataframe to prevent crashes
+            st.error(f"The uploaded file is missing a required column: {required_columns}")
+            return pd.DataFrame()
             
-        # Select only the columns we need
         df = df[required_columns]
-        
-        # Remove rows with missing values in our key columns
         df.dropna(subset=required_columns, inplace=True)
-
-        # Ensure data types are correct
         df['UNIT_INDEX_X'] = df['UNIT_INDEX_X'].astype(int)
         df['UNIT_INDEX_Y'] = df['UNIT_INDEX_Y'].astype(int)
-        
-        # Clean up defect type strings
         df['DEFECT_TYPE'] = df['DEFECT_TYPE'].str.strip()
         
     else:
-        # --- Fallback Path: Generate sample data with random, weighted quadrants ---
         st.sidebar.info("No file uploaded. Displaying sample data.")
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
         number_of_defects = 500
-        
-        # Generate random probabilities that sum to 1.0
-        random_weights = np.random.rand(4)
-        quadrant_probabilities = random_weights / random_weights.sum()
         
         st.sidebar.write("Random Quadrant Probabilities:", np.round(quadrant_probabilities, 2))
         
@@ -85,8 +67,6 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         df['QUADRANT'] = quadrant_choices
         
     # --- Common Processing for both loaded and sample data ---
-    
-    # Coordinate Transformation
     plot_x_base = df['UNIT_INDEX_Y'] % panel_cols
     plot_y_base = df['UNIT_INDEX_X'] % panel_rows
     x_offset = np.where(df['UNIT_INDEX_Y'] >= panel_cols, panel_cols + gap_size, 0)
@@ -103,8 +83,8 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
 def main():
     st.set_page_config(layout="wide")
     st.title("Defect Analysis App")
+    
 
-    # --- Sidebar for user inputs ---
     st.sidebar.header("Input Parameters")
     
     uploaded_file = st.sidebar.file_uploader("Upload an Excel file", type=["xlsx"])
@@ -112,8 +92,12 @@ def main():
     panel_cols = st.sidebar.number_input("Panel Columns", min_value=1, value=10, step=1)
     gap_size = st.sidebar.number_input("Gap Size", min_value=0, value=2, step=1)
     
-    # --- Load and display data ---
-    df_defects = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
+    # --- NEW CODE: Generate probabilities here ---
+    random_weights = np.random.rand(4)
+    quadrant_probabilities = random_weights / random_weights.sum()
+
+    # --- Load and display data, passing the probabilities ---
+    df_defects = load_data(uploaded_file, panel_rows, panel_cols, gap_size, quadrant_probabilities)
     
     if not df_defects.empty:
         st.subheader("Raw Data Preview")
