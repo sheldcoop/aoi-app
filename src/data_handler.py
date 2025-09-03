@@ -47,7 +47,7 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         number_of_defects = 217
         
         # Generate random probabilities that sum to 1.0
-        random_weights = [0.5,0.2,0.3,0.2]
+        random_weights = [0.5,0.2,0.3,0.1]
         quadrant_probabilities = random_weights / random_weights.sum()
         
         st.sidebar.write("Random Quadrant Probabilities:", np.round(quadrant_probabilities, 2))
