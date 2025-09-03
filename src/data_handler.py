@@ -64,7 +64,7 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         (df['UNIT_INDEX_X'] >= panel_rows) & (df['UNIT_INDEX_Y'] < panel_cols),
         (df['UNIT_INDEX_X'] >= panel_rows) & (df['UNIT_INDEX_Y'] >= panel_cols)
     ]
-    choices = ['Q1', 'Q2', 'Q3', 'Q4', p=[0.1, 0, 0.3, 0.6, 0]]
+    choices = ['Q1', 'Q2', 'Q3', 'Q4', p=[0.1, 0.3, 0.6, 0]]
     df['QUADRANT'] = np.select(conditions, choices, default='Other')
     
     # Coordinate Transformation
