@@ -44,10 +44,10 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         # --- Fallback Path: Generate sample data with random, weighted quadrants ---
         st.sidebar.info("No file uploaded. Displaying sample data.")
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
-        number_of_defects = 500
+        number_of_defects = 217
         
         # Generate random probabilities that sum to 1.0
-        random_weights = np.random.rand(4)
+        random_weights = [0.5,0.2,0.3.0.2]
         quadrant_probabilities = random_weights / random_weights.sum()
         
         st.sidebar.write("Random Quadrant Probabilities:", np.round(quadrant_probabilities, 2))
