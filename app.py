@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import pandas as pd
 
 # Import our modularized functions
-from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
+from src.config import THEMES
 from src.data_handler import load_data
 from src.plotting import (
     create_grid_shapes, create_defect_traces, 
@@ -29,12 +29,28 @@ def main():
     # --- App Configuration ---
     st.set_page_config(layout="wide", page_title="Panel Defect Analysis")
     
+    # --- Sidebar Control Panel ---
+    st.sidebar.header("Control Panel")
+    st.sidebar.divider()
+
+    with st.sidebar.expander("💾 Data Source", expanded=True):
+        uploaded_file = st.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"])
+
+    with st.sidebar.expander("⚙️ Configuration", expanded=True):
+        theme_name = st.selectbox("Select Theme", options=list(THEMES.keys()))
+        selected_theme = THEMES[theme_name]
+
+        panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
+        panel_cols = st.number_input("Panel Columns", min_value=2, max_value=50, value=7)
+        gap_size = 1
+        cell_size = st.slider("Cell Size (Zoom)", min_value=20, max_value=100, value=40, help="Adjust the visual size of the grid cells on the defect map.")
+
     # --- Apply Custom CSS for a Professional UI ---
     st.markdown(f"""
         <style>
             /* Main app background */
             .reportview-container {{
-                background-color: {BACKGROUND_COLOR};
+                background-color: {selected_theme["BACKGROUND_COLOR"]};
             }}
             /* Sidebar styling */
             .sidebar .sidebar-content {{
@@ -48,11 +64,11 @@ def main():
             }}
             /* General text color */
             body, h2, h3, .stRadio, .stSelectbox, .stNumberInput {{
-                color: {TEXT_COLOR};
+                color: {selected_theme["TEXT_COLOR"]};
             }}
             /* Style the KPI metric labels and values */
             .st-emotion-cache-1g8w9s4 p {{ /* Metric Label */
-                color: {TEXT_COLOR};
+                color: {selected_theme["TEXT_COLOR"]};
                 font-size: 16px;
             }}
              .st-emotion-cache-fplge9 div {{ /* Metric Value */
@@ -63,19 +79,6 @@ def main():
     
     st.title("Panel Defect Analysis Tool")
 
-    # --- Sidebar Control Panel ---
-    st.sidebar.header("Control Panel")
-    st.sidebar.divider()
-
-    with st.sidebar.expander("💾 Data Source", expanded=True):
-        uploaded_file = st.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"])
-
-    with st.sidebar.expander("⚙️ Configuration", expanded=True):
-        panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
-        panel_cols = st.number_input("Panel Columns", min_value=2, max_value=50, value=7)
-        gap_size = 1
-        cell_size = st.slider("Cell Size (Zoom)", min_value=20, max_value=100, value=40, help="Adjust the visual size of the grid cells on the defect map.")
-
     # --- Load data early to populate filters ---
     full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
     if full_df.empty:
@@ -83,22 +86,12 @@ def main():
         return
 
     with st.sidebar.expander("🔬 Analysis Controls", expanded=True):
-        defect_types = sorted(full_df['DEFECT_TYPE'].unique())
-        selected_defects = st.multiselect(
-            "Filter by Defect Type",
-            options=defect_types,
-            default=[]
-        )
-        view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
         quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
     # --- Filter data based on sidebar controls ---
     display_df = full_df.copy()
     if quadrant_selection != "All":
         display_df = display_df[display_df['QUADRANT'] == quadrant_selection]
-
-    if selected_defects: # If the user has selected any defect types
-        display_df = display_df[display_df['DEFECT_TYPE'].isin(selected_defects)]
 
     with st.sidebar.expander("📄 Reporting", expanded=True):
         excel_report_bytes = generate_excel_report(full_df, panel_rows, panel_cols)
@@ -110,7 +103,9 @@ def main():
         )
 
     # --- Main content area ---
-    if view_mode == "Defect View":
+    tab1, tab2, tab3 = st.tabs(["Defect Map", "Pareto Analysis", "Summary"])
+
+    with tab1: # Defect View
         fig = go.Figure()
         defect_traces = create_defect_traces(display_df)
         for trace in defect_traces: fig.add_trace(trace)
@@ -127,13 +122,13 @@ def main():
             padding = gap_size # Set padding equal to the gap size for consistent spacing
             x_axis_range = [-padding, total_width + padding]
             y_axis_range = [-padding, total_height + padding]
-            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All')
+            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, selected_theme, quadrant='All')
             show_axes = True
-            plot_bg_color = PLOT_AREA_COLOR
+            plot_bg_color = selected_theme["PLOT_AREA_COLOR"]
         else:
-            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant=quadrant_selection)
+            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, selected_theme, quadrant=quadrant_selection)
             show_axes = False
-            plot_bg_color = BACKGROUND_COLOR
+            plot_bg_color = selected_theme["BACKGROUND_COLOR"]
             if quadrant_selection == "Q1": x_axis_range, y_axis_range = q1_x, q1_y
             elif quadrant_selection == "Q2": x_axis_range, y_axis_range = q2_x, q2_y
             elif quadrant_selection == "Q3": x_axis_range, y_axis_range = q3_x, q3_y
@@ -142,20 +137,17 @@ def main():
         x_tick_pos = [i + 0.5 for i in range(panel_cols)] + [i + 0.5 + panel_cols + gap_size for i in range(panel_cols)]
         y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
         
-        # --- Calculate dynamic height for the plot ---
-        # The total height of the grid in plot coordinates is (2 * panel_rows + gap_size)
-        # We multiply this by the user-defined cell_size to get the desired pixel height.
         dynamic_plot_height = (2 * panel_rows + gap_size) * cell_size
 
         layout = get_base_layout(
             title_text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)",
-            text_color=TEXT_COLOR,
+            text_color=selected_theme["TEXT_COLOR"],
             plot_bgcolor=plot_bg_color,
-            paper_bgcolor=BACKGROUND_COLOR
+            paper_bgcolor=selected_theme["BACKGROUND_COLOR"]
         )
         layout.update(
-            xaxis=dict(title="Unit Column Index" if show_axes else "", range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            yaxis=dict(title="Unit Row Index" if show_axes else "", range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
+            xaxis=dict(title="Unit Column Index" if show_axes else "", range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=selected_theme["GRID_COLOR"], mirror=True),
+            yaxis=dict(title="Unit Row Index" if show_axes else "", range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=selected_theme["GRID_COLOR"], mirror=True),
             shapes=plot_shapes,
             legend=dict(x=1.02, y=1, xanchor='left', yanchor='top'),
             height=dynamic_plot_height
@@ -163,16 +155,16 @@ def main():
         fig.update_layout(layout)
         st.plotly_chart(fig, use_container_width=True)
 
-    elif view_mode == "Pareto View":
+    with tab2: # Pareto View
         fig = go.Figure()
         pareto_trace = create_pareto_trace(display_df)
         fig.add_trace(pareto_trace)
         
         layout = get_base_layout(
             title_text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)",
-            text_color=TEXT_COLOR,
-            plot_bgcolor=PLOT_AREA_COLOR,
-            paper_bgcolor=BACKGROUND_COLOR
+            text_color=selected_theme["TEXT_COLOR"],
+            plot_bgcolor=selected_theme["PLOT_AREA_COLOR"],
+            paper_bgcolor=selected_theme["BACKGROUND_COLOR"]
         )
         layout.update(
             xaxis=dict(title="Defect Type"),
@@ -183,7 +175,7 @@ def main():
         fig.update_layout(layout)
         st.plotly_chart(fig, use_container_width=True)
 
-    elif view_mode == "Summary View":
+    with tab3: # Summary View
         st.header(f"Statistical Summary for Quadrant: {quadrant_selection}")
 
         if display_df.empty:
@@ -232,9 +224,9 @@ def main():
             
             layout = get_base_layout(
                 title_text="Defect Distribution by Quadrant",
-                text_color=TEXT_COLOR,
-                plot_bgcolor=PLOT_AREA_COLOR,
-                paper_bgcolor=BACKGROUND_COLOR
+                text_color=selected_theme["TEXT_COLOR"],
+                plot_bgcolor=selected_theme["PLOT_AREA_COLOR"],
+                paper_bgcolor=selected_theme["BACKGROUND_COLOR"]
             )
             layout.update(
                 barmode='group',

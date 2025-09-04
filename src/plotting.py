@@ -5,15 +5,15 @@ import plotly.graph_objects as go
 import pandas as pd
 
 # Import the style configurations
-from src.config import PANEL_COLOR, GRID_COLOR, defect_style_map
+from src.config import defect_style_map
 
 # ==============================================================================
 # --- VISUALIZATION FUNCTIONS ---
 # ==============================================================================
 
-def create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All'):
+def create_grid_shapes(panel_rows, panel_cols, gap_size, theme, quadrant='All'):
     """
-    Generates the shapes for the 2x2 panel grid.
+    Generates the shapes for the 2x2 panel grid using colors from the selected theme.
     Can draw all 4 panels or a single, specified quadrant for zoom view.
     Includes scribe lines.
     """
@@ -29,11 +29,11 @@ def create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All'):
         shapes.append(dict(type="rect", x0=0, y0=panel_rows, x1=2 * panel_cols + gap_size, y1=panel_rows + gap_size, fillcolor='#A8652A', line_width=0, layer='below'))
 
     for x_start, y_start in origins_to_draw.values():
-        shapes.append(dict(type="rect", x0=x_start, y0=y_start, x1=x_start + panel_cols, y1=y_start + panel_rows, line=dict(color=GRID_COLOR, width=3), fillcolor=PANEL_COLOR, layer='below'))
+        shapes.append(dict(type="rect", x0=x_start, y0=y_start, x1=x_start + panel_cols, y1=y_start + panel_rows, line=dict(color=theme["GRID_COLOR"], width=3), fillcolor=theme["PANEL_COLOR"], layer='below'))
         for i in range(1, panel_cols):
-            shapes.append(dict(type="line", x0=x_start + i, y0=y_start, x1=x_start + i, y1=y_start + panel_rows, line=dict(color=GRID_COLOR, width=0.5, dash='dot'), opacity=0.5, layer='below'))
+            shapes.append(dict(type="line", x0=x_start + i, y0=y_start, x1=x_start + i, y1=y_start + panel_rows, line=dict(color=theme["GRID_COLOR"], width=0.5, dash='dot'), opacity=0.5, layer='below'))
         for i in range(1, panel_rows):
-            shapes.append(dict(type="line", x0=x_start, y0=y_start + i, x1=x_start + panel_cols, y1=y_start + i, line=dict(color=GRID_COLOR, width=0.5, dash='dot'), opacity=0.5, layer='below'))
+            shapes.append(dict(type="line", x0=x_start, y0=y_start + i, x1=x_start + panel_cols, y1=y_start + i, line=dict(color=theme["GRID_COLOR"], width=0.5, dash='dot'), opacity=0.5, layer='below'))
             
     return shapes
 
