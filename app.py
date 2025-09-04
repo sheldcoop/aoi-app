@@ -121,7 +121,7 @@ def main():
         q4_x, q4_y = [panel_cols + gap_size, total_width], [panel_rows + gap_size, total_height]
         
         if quadrant_selection == "All":
-            padding = 2 # Increase this value to add more padding around the grid
+            padding = gap_size # Set padding equal to the gap size for consistent spacing
             x_axis_range = [-padding, total_width + padding]
             y_axis_range = [-padding, total_height + padding]
             plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All')
