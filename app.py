@@ -67,16 +67,14 @@ def main():
     st.sidebar.header("Control Panel")
     st.sidebar.divider()
 
-    st.sidebar.subheader("Data Source")
-    uploaded_file = st.sidebar.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"])
+    with st.sidebar.expander("💾 Data Source", expanded=True):
+        uploaded_file = st.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"])
 
-    st.sidebar.divider()
-
-    st.sidebar.subheader("Configuration")
-    panel_rows = st.sidebar.number_input("Panel Rows", min_value=2, max_value=50, value=7)
-    panel_cols = st.sidebar.number_input("Panel Columns", min_value=2, max_value=50, value=7)
-    gap_size = 1
-    cell_size = st.sidebar.slider("Cell Size (Zoom)", min_value=20, max_value=100, value=40, help="Adjust the visual size of the grid cells on the defect map.")
+    with st.sidebar.expander("⚙️ Configuration", expanded=True):
+        panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
+        panel_cols = st.number_input("Panel Columns", min_value=2, max_value=50, value=7)
+        gap_size = 1
+        cell_size = st.slider("Cell Size (Zoom)", min_value=20, max_value=100, value=40, help="Adjust the visual size of the grid cells on the defect map.")
 
     # --- Load data early to populate filters ---
     full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
@@ -84,19 +82,15 @@ def main():
         st.warning("No data to display. Please upload a valid Excel file.")
         return
 
-    # --- Sidebar controls that depend on the data ---
-    st.sidebar.divider()
-    st.sidebar.subheader("Analysis Controls")
-
-    defect_types = sorted(full_df['DEFECT_TYPE'].unique())
-    selected_defects = st.sidebar.multiselect(
-        "Filter by Defect Type",
-        options=defect_types,
-        default=[]
-    )
-
-    view_mode = st.sidebar.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
-    quadrant_selection = st.sidebar.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
+    with st.sidebar.expander("🔬 Analysis Controls", expanded=True):
+        defect_types = sorted(full_df['DEFECT_TYPE'].unique())
+        selected_defects = st.multiselect(
+            "Filter by Defect Type",
+            options=defect_types,
+            default=[]
+        )
+        view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
+        quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
     # --- Filter data based on sidebar controls ---
     display_df = full_df.copy()
@@ -106,18 +100,14 @@ def main():
     if selected_defects: # If the user has selected any defect types
         display_df = display_df[display_df['DEFECT_TYPE'].isin(selected_defects)]
 
-    # --- Add Download Report Button to Sidebar ---
-    st.sidebar.divider()
-    st.sidebar.subheader("Reporting")
-
-    excel_report_bytes = generate_excel_report(full_df, panel_rows, panel_cols)
-
-    st.sidebar.download_button(
-        label="Download Full Report",
-        data=excel_report_bytes,
-        file_name="full_defect_report.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    with st.sidebar.expander("📄 Reporting", expanded=True):
+        excel_report_bytes = generate_excel_report(full_df, panel_rows, panel_cols)
+        st.download_button(
+            label="Download Full Report",
+            data=excel_report_bytes,
+            file_name="full_defect_report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
     # --- Main content area ---
     if view_mode == "Defect View":
