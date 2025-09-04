@@ -76,6 +76,7 @@ def main():
     panel_rows = st.sidebar.number_input("Panel Rows", min_value=2, max_value=50, value=7)
     panel_cols = st.sidebar.number_input("Panel Columns", min_value=2, max_value=50, value=7)
     gap_size = 1
+    cell_size = st.sidebar.slider("Cell Size (Zoom)", min_value=20, max_value=100, value=40, help="Adjust the visual size of the grid cells on the defect map.")
 
     # --- Load data early to populate filters ---
     full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
@@ -149,6 +150,11 @@ def main():
         x_tick_pos = [i + 0.5 for i in range(panel_cols)] + [i + 0.5 + panel_cols + gap_size for i in range(panel_cols)]
         y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
         
+        # --- Calculate dynamic height for the plot ---
+        # The total height of the grid in plot coordinates is (2 * panel_rows + gap_size)
+        # We multiply this by the user-defined cell_size to get the desired pixel height.
+        dynamic_plot_height = (2 * panel_rows + gap_size) * cell_size
+
         layout = get_base_layout(
             title_text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)",
             text_color=TEXT_COLOR,
@@ -160,7 +166,7 @@ def main():
             yaxis=dict(title="Unit Row Index" if show_axes else "", range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
             shapes=plot_shapes,
             legend=dict(x=1.02, y=1, xanchor='left', yanchor='top'),
-            height=800
+            height=dynamic_plot_height
         )
         fig.update_layout(layout)
         st.plotly_chart(fig, use_container_width=True)
