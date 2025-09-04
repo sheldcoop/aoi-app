@@ -14,7 +14,7 @@ from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
 from src.data_handler import load_data
 from src.plotting import (
     create_grid_shapes, create_defect_traces, 
-    create_pareto_trace, create_grouped_pareto_trace
+    create_pareto_trace, create_grouped_pareto_trace, get_base_layout
 )
 from src.reporting import generate_excel_report
 
@@ -137,16 +137,20 @@ def main():
         x_tick_pos = [i + 0.5 for i in range(panel_cols)] + [i + 0.5 + panel_cols + gap_size for i in range(panel_cols)]
         y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
         
-        fig.update_layout(
-            title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(title="Unit Column Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            yaxis=dict(title="Unit Row Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            plot_bgcolor=plot_bg_color, 
-            paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
+        layout = get_base_layout(
+            title_text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)",
+            text_color=TEXT_COLOR,
+            plot_bgcolor=plot_bg_color,
+            paper_bgcolor=BACKGROUND_COLOR
+        )
+        layout.update(
+            xaxis=dict(title="Unit Column Index" if show_axes else "", range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
+            yaxis=dict(title="Unit Row Index" if show_axes else "", range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
             shapes=plot_shapes,
-            legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top'), 
+            legend=dict(x=1.02, y=1, xanchor='left', yanchor='top'),
             height=800
         )
+        fig.update_layout(layout)
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Pareto View":
@@ -154,15 +158,19 @@ def main():
         pareto_trace = create_pareto_trace(display_df)
         fig.add_trace(pareto_trace)
         
-        fig.update_layout(
-            title=dict(text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-            yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-            plot_bgcolor=PLOT_AREA_COLOR, 
-            paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
-            showlegend=False, 
+        layout = get_base_layout(
+            title_text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)",
+            text_color=TEXT_COLOR,
+            plot_bgcolor=PLOT_AREA_COLOR,
+            paper_bgcolor=BACKGROUND_COLOR
+        )
+        layout.update(
+            xaxis=dict(title="Defect Type"),
+            yaxis=dict(title="Count"),
+            showlegend=False,
             height=800
         )
+        fig.update_layout(layout)
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Summary View":
@@ -190,7 +198,7 @@ def main():
             top_offenders = display_df['DEFECT_TYPE'].value_counts().reset_index()
             top_offenders.columns = ['Defect Type', 'Count']
             top_offenders['Percentage'] = (top_offenders['Count'] / total_defects) * 100
-            st.dataframe(top_offenders.style.format({'Percentage': '{:.2f}%'}).background_gradient(cmap='Reds', subset=['Count']), use_container_width=True)
+            st.dataframe(top_offenders.style.format({'Percentage': '{:.2f}%'}), use_container_width=True)
         
         else: # "All" is selected, show the Quarterly Breakdown
             st.markdown("### Quarterly KPI Breakdown")
@@ -212,15 +220,19 @@ def main():
             grouped_traces = create_grouped_pareto_trace(full_df)
             for trace in grouped_traces: fig.add_trace(trace)
             
-            fig.update_layout(
+            layout = get_base_layout(
+                title_text="Defect Distribution by Quadrant",
+                text_color=TEXT_COLOR,
+                plot_bgcolor=PLOT_AREA_COLOR,
+                paper_bgcolor=BACKGROUND_COLOR
+            )
+            layout.update(
                 barmode='group',
-                xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-                yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-                plot_bgcolor=PLOT_AREA_COLOR, 
-                paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
-                legend=dict(font=dict(color=TEXT_COLOR)), 
+                xaxis=dict(title="Defect Type"),
+                yaxis=dict(title="Count"),
                 height=600
             )
+            fig.update_layout(layout)
             st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == '__main__':
