@@ -22,9 +22,8 @@ Install the required libraries:
 
 pip install -r requirements.txt
 
-Place your data file (e.g., my_defects.xlsx) inside the data/ directory.
-Note: You will need to update the data_handler.py file to read from your specific file.
-
 Run the Streamlit app from your terminal:
 
 streamlit run app.py
+
+Once the app is running, use the "Control Panel" on the sidebar to upload your own defect data in Excel format. The app will dynamically update with your data. If no file is uploaded, the app will display a sample dataset.
