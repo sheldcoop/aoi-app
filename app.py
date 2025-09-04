@@ -127,14 +127,16 @@ def main():
         
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
         total_width, total_height = 2 * panel_cols + gap_size, 2 * panel_rows + gap_size
-        x_range_full, y_range_full = [-1, total_width + 1], [-1, total_height + 1]
+
         q1_x, q1_y = [0, panel_cols], [0, panel_rows]
         q2_x, q2_y = [panel_cols + gap_size, total_width], [0, panel_rows]
         q3_x, q3_y = [0, panel_cols], [panel_rows + gap_size, total_height]
         q4_x, q4_y = [panel_cols + gap_size, total_width], [panel_rows + gap_size, total_height]
         
         if quadrant_selection == "All":
-            x_axis_range, y_axis_range = x_range_full, y_range_full
+            padding = gap_size # Set padding equal to the gap size for consistent spacing
+            x_axis_range = [-padding, total_width + padding]
+            y_axis_range = [-padding, total_height + padding]
             plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All')
             show_axes = True
             plot_bg_color = PLOT_AREA_COLOR
@@ -255,4 +257,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

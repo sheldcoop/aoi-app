@@ -93,14 +93,3 @@ def create_grouped_pareto_trace(df):
         
     return traces
 
-
-def get_base_layout(title_text, text_color, plot_bgcolor, paper_bgcolor):
-    """Returns a base layout configuration for plotly figures."""
-    return go.Layout(
-        title=dict(text=title_text, font=dict(color=text_color)),
-        plot_bgcolor=plot_bgcolor,
-        paper_bgcolor=paper_bgcolor,
-        legend=dict(title_font=dict(color=text_color), font=dict(color=text_color)),
-        xaxis=dict(title_font=dict(color=text_color), tickfont=dict(color=text_color)),
-        yaxis=dict(title_font=dict(color=text_color), tickfont=dict(color=text_color))
-    )
