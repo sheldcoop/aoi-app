@@ -89,4 +89,3 @@ def create_grouped_pareto_trace(df):
             ))
             
     return traces
-
