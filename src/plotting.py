@@ -70,22 +70,26 @@ def create_grouped_pareto_trace(df):
     Creates a grouped Pareto bar chart to compare defect counts across all quadrants.
     """
     if df.empty:
-        return [] # Return an empty list if there's no data
-        
-    grouped_data = df.groupby(['QUADRANT', 'DEFECT_TYPE']).size().reset_index(name='Count')
-    top_defects = df['DEFECT_TYPE'].value_counts().index.tolist()
+        return []
+
+    # Use pivot_table to reshape the data, counting defects by type and quadrant
+    pivot_df = df.pivot_table(index='DEFECT_TYPE', columns='QUADRANT', aggfunc='size', fill_value=0)
+
+    # Ensure all quadrants are present, even if they have no defects
+    for quad in ['Q1', 'Q2', 'Q3', 'Q4']:
+        if quad not in pivot_df.columns:
+            pivot_df[quad] = 0
+
+    # Sort the defect types by their total count across all quadrants
+    pivot_df = pivot_df.loc[pivot_df.sum(axis=1).sort_values(ascending=False).index]
+
     traces = []
-    quadrants = ['Q1', 'Q2', 'Q3', 'Q4']
-    
-    for quadrant in quadrants:
-        quadrant_data = grouped_data[grouped_data['QUADRANT'] == quadrant]
-        pivot = quadrant_data.pivot(index='DEFECT_TYPE', columns='QUADRANT', values='Count').reindex(top_defects).fillna(0)
+    for quadrant in ['Q1', 'Q2', 'Q3', 'Q4']:
+        traces.append(go.Bar(
+            name=quadrant,
+            x=pivot_df.index,
+            y=pivot_df[quadrant]
+        ))
         
-        if not pivot.empty:
-            traces.append(go.Bar(
-                name=quadrant,
-                x=pivot.index,
-                y=pivot[quadrant]
-            ))
-            
     return traces
+

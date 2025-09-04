@@ -14,7 +14,7 @@ from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
 from src.data_handler import load_data
 from src.plotting import (
     create_grid_shapes, create_defect_traces, 
-    create_pareto_trace, create_grouped_pareto_trace
+    create_pareto_trace, create_grouped_pareto_trace, get_base_layout
 )
 from src.reporting import generate_excel_report
 
@@ -64,47 +64,60 @@ def main():
     st.title("Panel Defect Analysis Tool")
 
     # --- Sidebar Control Panel ---
-    with st.sidebar:
-        st.header("Control Panel")
-        st.divider()
-        
-        st.subheader("Data Source")
-        uploaded_file = st.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"])
-        
-        st.divider()
-        
-        st.subheader("Configuration")
-        panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
-        panel_cols = st.number_input("Panel Columns", min_value=2, max_value=50, value=7)
-        gap_size = 1 
+    st.sidebar.header("Control Panel")
+    st.sidebar.divider()
 
-        st.divider()
+    st.sidebar.subheader("Data Source")
+    uploaded_file = st.sidebar.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"])
 
-        st.subheader("Analysis Controls")
-        view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
-        quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
+    st.sidebar.divider()
 
-    # --- Load and filter data ---
+    st.sidebar.subheader("Configuration")
+    panel_rows = st.sidebar.number_input("Panel Rows", min_value=2, max_value=50, value=7)
+    panel_cols = st.sidebar.number_input("Panel Columns", min_value=2, max_value=50, value=7)
+    gap_size = 1
+    cell_size = st.sidebar.slider("Cell Size (Zoom)", min_value=20, max_value=100, value=40, help="Adjust the visual size of the grid cells on the defect map.")
+
+    # --- Load data early to populate filters ---
     full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
     if full_df.empty:
         st.warning("No data to display. Please upload a valid Excel file.")
         return
 
-    display_df = full_df[full_df['QUADRANT'] == quadrant_selection] if quadrant_selection != "All" else full_df
+    # --- Sidebar controls that depend on the data ---
+    st.sidebar.divider()
+    st.sidebar.subheader("Analysis Controls")
+
+    defect_types = sorted(full_df['DEFECT_TYPE'].unique())
+    selected_defects = st.sidebar.multiselect(
+        "Filter by Defect Type",
+        options=defect_types,
+        default=[]
+    )
+
+    view_mode = st.sidebar.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
+    quadrant_selection = st.sidebar.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
+
+    # --- Filter data based on sidebar controls ---
+    display_df = full_df.copy()
+    if quadrant_selection != "All":
+        display_df = display_df[display_df['QUADRANT'] == quadrant_selection]
+
+    if selected_defects: # If the user has selected any defect types
+        display_df = display_df[display_df['DEFECT_TYPE'].isin(selected_defects)]
 
     # --- Add Download Report Button to Sidebar ---
-    with st.sidebar:
-        st.divider()
-        st.subheader("Reporting")
-        
-        excel_report_bytes = generate_excel_report(full_df, panel_rows, panel_cols)
-        
-        st.download_button(
-            label="Download Full Report",
-            data=excel_report_bytes,
-            file_name="full_defect_report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+    st.sidebar.divider()
+    st.sidebar.subheader("Reporting")
+
+    excel_report_bytes = generate_excel_report(full_df, panel_rows, panel_cols)
+
+    st.sidebar.download_button(
+        label="Download Full Report",
+        data=excel_report_bytes,
+        file_name="full_defect_report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
     # --- Main content area ---
     if view_mode == "Defect View":
@@ -139,16 +152,25 @@ def main():
         x_tick_pos = [i + 0.5 for i in range(panel_cols)] + [i + 0.5 + panel_cols + gap_size for i in range(panel_cols)]
         y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
         
-        fig.update_layout(
-            title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(title="Unit Column Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            yaxis=dict(title="Unit Row Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            plot_bgcolor=plot_bg_color, 
-            paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
-            shapes=plot_shapes,
-            legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top'), 
-            height=800
+        # --- Calculate dynamic height for the plot ---
+        # The total height of the grid in plot coordinates is (2 * panel_rows + gap_size)
+        # We multiply this by the user-defined cell_size to get the desired pixel height.
+        dynamic_plot_height = (2 * panel_rows + gap_size) * cell_size
+
+        layout = get_base_layout(
+            title_text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)",
+            text_color=TEXT_COLOR,
+            plot_bgcolor=plot_bg_color,
+            paper_bgcolor=BACKGROUND_COLOR
         )
+        layout.update(
+            xaxis=dict(title="Unit Column Index" if show_axes else "", range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
+            yaxis=dict(title="Unit Row Index" if show_axes else "", range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
+            shapes=plot_shapes,
+            legend=dict(x=1.02, y=1, xanchor='left', yanchor='top'),
+            height=dynamic_plot_height
+        )
+        fig.update_layout(layout)
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Pareto View":
@@ -156,15 +178,19 @@ def main():
         pareto_trace = create_pareto_trace(display_df)
         fig.add_trace(pareto_trace)
         
-        fig.update_layout(
-            title=dict(text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-            yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-            plot_bgcolor=PLOT_AREA_COLOR, 
-            paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
-            showlegend=False, 
+        layout = get_base_layout(
+            title_text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)",
+            text_color=TEXT_COLOR,
+            plot_bgcolor=PLOT_AREA_COLOR,
+            paper_bgcolor=BACKGROUND_COLOR
+        )
+        layout.update(
+            xaxis=dict(title="Defect Type"),
+            yaxis=dict(title="Count"),
+            showlegend=False,
             height=800
         )
+        fig.update_layout(layout)
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Summary View":
@@ -192,7 +218,7 @@ def main():
             top_offenders = display_df['DEFECT_TYPE'].value_counts().reset_index()
             top_offenders.columns = ['Defect Type', 'Count']
             top_offenders['Percentage'] = (top_offenders['Count'] / total_defects) * 100
-            st.dataframe(top_offenders.style.format({'Percentage': '{:.2f}%'}).background_gradient(cmap='Reds', subset=['Count']), use_container_width=True)
+            st.dataframe(top_offenders.style.format({'Percentage': '{:.2f}%'}), use_container_width=True)
         
         else: # "All" is selected, show the Quarterly Breakdown
             st.markdown("### Quarterly KPI Breakdown")
@@ -214,15 +240,19 @@ def main():
             grouped_traces = create_grouped_pareto_trace(full_df)
             for trace in grouped_traces: fig.add_trace(trace)
             
-            fig.update_layout(
+            layout = get_base_layout(
+                title_text="Defect Distribution by Quadrant",
+                text_color=TEXT_COLOR,
+                plot_bgcolor=PLOT_AREA_COLOR,
+                paper_bgcolor=BACKGROUND_COLOR
+            )
+            layout.update(
                 barmode='group',
-                xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-                yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-                plot_bgcolor=PLOT_AREA_COLOR, 
-                paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
-                legend=dict(font=dict(color=TEXT_COLOR)), 
+                xaxis=dict(title="Defect Type"),
+                yaxis=dict(title="Count"),
                 height=600
             )
+            fig.update_layout(layout)
             st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == '__main__':
