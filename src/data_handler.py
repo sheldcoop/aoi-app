@@ -35,14 +35,12 @@ def create_image_lookup_from_uploads(uploaded_images):
 # ==============================================================================
 
 @st.cache_data
-def load_data(uploaded_file, uploaded_images, panel_rows, panel_cols, gap_size):
+def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
     """
     Loads, prepares, and caches data from a user-uploaded file.
     If no file is uploaded, it falls back to sample data.
-    Links defect data to uploaded images via DEFECT_ID.
+    This function is cached for performance.
     """
-    image_lookup = create_image_lookup_from_uploads(uploaded_images)
-
     if uploaded_file is not None:
         st.sidebar.success("Excel file uploaded successfully!")
         df = pd.read_excel(uploaded_file, engine='openpyxl')
@@ -61,9 +59,6 @@ def load_data(uploaded_file, uploaded_images, panel_rows, panel_cols, gap_size):
         df['DEFECT_ID'] = df['DEFECT_ID'].astype(int)
 
         df['DEFECT_TYPE'] = df['DEFECT_TYPE'].str.strip()
-
-        # Link images using the DEFECT_ID
-        df['image_path'] = df['DEFECT_ID'].map(image_lookup)
         
     else:
         st.sidebar.info("No file uploaded. Displaying sample data.")
@@ -76,8 +71,7 @@ def load_data(uploaded_file, uploaded_images, panel_rows, panel_cols, gap_size):
             'DEFECT_TYPE': np.random.choice([
                 'Nick', 'Short', 'Missing Feature', 'Cut', 'Fine Short', 
                 'Pad Violation', 'Island', 'Cut/Short', 'Nick/Protrusion'
-            ], size=number_of_defects),
-            'image_path': [None] * number_of_defects
+            ], size=number_of_defects)
         }
         df = pd.DataFrame(defect_data)
 

@@ -91,7 +91,21 @@ def main():
         quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
     # --- Load and filter data ---
-    full_df = load_data(uploaded_file, uploaded_images, panel_rows, panel_cols, gap_size)
+    from src.data_handler import create_image_lookup_from_uploads
+
+    # Load the main data; this part is cached for performance
+    full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
+
+    if not full_df.empty:
+        # Create the image lookup from uploaded files (not cached)
+        image_lookup = create_image_lookup_from_uploads(uploaded_images)
+
+        # Add the image_path column to the DataFrame
+        if not image_lookup:
+            full_df['image_path'] = None
+        else:
+            full_df['image_path'] = full_df['DEFECT_ID'].map(image_lookup)
+
     if full_df.empty:
         st.warning("No data to display. Please upload a valid Excel file.")
         return
