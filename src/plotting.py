@@ -38,32 +38,17 @@ def create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All'):
     return shapes
 
 def create_defect_traces(df):
-    """
-    Creates a scatter trace for each defect type.
-    Includes image_path in customdata for hover events.
-    """
+    """Creates a scatter trace for each defect type."""
     traces = []
-    # Ensure the image_path column exists
-    if 'image_path' not in df.columns:
-        df['image_path'] = None
-
     for dtype, color in defect_style_map.items():
         dff = df[df['DEFECT_TYPE'] == dtype]
         if not dff.empty:
             traces.append(go.Scatter(
-                x=dff['plot_x'],
-                y=dff['plot_y'],
-                mode='markers',
+                x=dff['plot_x'], y=dff['plot_y'], mode='markers',
                 marker=dict(color=color, size=8, line=dict(width=1, color='black')),
                 name=dtype,
-                # Include all necessary data for the hover event
-                customdata=dff[['UNIT_INDEX_X', 'UNIT_INDEX_Y', 'DEFECT_TYPE', 'image_path']],
-                hovertemplate=(
-                    "<b>Type: %{customdata[2]}</b><br>"
-                    "Location (X, Y): (%{customdata[0]}, %{customdata[1]})<br>"
-                    "Image Available: %{customdata[3]}"
-                    "<extra></extra>"
-                )
+                customdata=dff[['UNIT_INDEX_X', 'UNIT_INDEX_Y', 'DEFECT_TYPE']],
+                hovertemplate="<b>Type: %{customdata[2]}</b><br>Location (X, Y): (%{customdata[0]}, %{customdata[1]})<extra></extra>"
             ))
     return traces
     
