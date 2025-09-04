@@ -8,6 +8,7 @@ This script acts as the main entry point and orchestrates the UI and logic.
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
+from streamlit_plotly_events import plotly_events
 
 # Import our modularized functions
 from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
@@ -70,6 +71,11 @@ def main():
         
         st.subheader("Data Source")
         uploaded_file = st.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"])
+        uploaded_images = st.file_uploader(
+            "Upload Defect Images (Optional)",
+            type=["jpg", "jpeg", "png"],
+            accept_multiple_files=True
+        )
         
         st.divider()
         
@@ -85,7 +91,7 @@ def main():
         quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
     # --- Load and filter data ---
-    full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
+    full_df = load_data(uploaded_file, uploaded_images, panel_rows, panel_cols, gap_size)
     if full_df.empty:
         st.warning("No data to display. Please upload a valid Excel file.")
         return
@@ -108,46 +114,64 @@ def main():
 
     # --- Main content area ---
     if view_mode == "Defect View":
-        fig = go.Figure()
-        defect_traces = create_defect_traces(display_df)
-        for trace in defect_traces: fig.add_trace(trace)
+        plot_col, image_col = st.columns([3, 1])
 
-        total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
-        total_width, total_height = 2 * panel_cols + gap_size, 2 * panel_rows + gap_size
-        x_range_full, y_range_full = [-1, total_width + 1], [-1, total_height + 1]
-        q1_x, q1_y = [0, panel_cols], [0, panel_rows]
-        q2_x, q2_y = [panel_cols + gap_size, total_width], [0, panel_rows]
-        q3_x, q3_y = [0, panel_cols], [panel_rows + gap_size, total_height]
-        q4_x, q4_y = [panel_cols + gap_size, total_width], [panel_rows + gap_size, total_height]
+        with plot_col:
+            fig = go.Figure()
+            defect_traces = create_defect_traces(display_df)
+            for trace in defect_traces: fig.add_trace(trace)
 
-        if quadrant_selection == "All":
-            x_axis_range, y_axis_range = x_range_full, y_range_full
-            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All')
-            show_axes = True
-            plot_bg_color = PLOT_AREA_COLOR
-        else:
-            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant=quadrant_selection)
-            show_axes = False
-            plot_bg_color = BACKGROUND_COLOR
-            if quadrant_selection == "Q1": x_axis_range, y_axis_range = q1_x, q1_y
-            elif quadrant_selection == "Q2": x_axis_range, y_axis_range = q2_x, q2_y
-            elif quadrant_selection == "Q3": x_axis_range, y_axis_range = q3_x, q3_y
-            else: x_axis_range, y_axis_range = q4_x, q4_y
+            total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
+            total_width, total_height = 2 * panel_cols + gap_size, 2 * panel_rows + gap_size
+            x_range_full, y_range_full = [-1, total_width + 1], [-1, total_height + 1]
+            q1_x, q1_y = [0, panel_cols], [0, panel_rows]
+            q2_x, q2_y = [panel_cols + gap_size, total_width], [0, panel_rows]
+            q3_x, q3_y = [0, panel_cols], [panel_rows + gap_size, total_height]
+            q4_x, q4_y = [panel_cols + gap_size, total_width], [panel_rows + gap_size, total_height]
 
-        x_tick_pos = [i + 0.5 for i in range(panel_cols)] + [i + 0.5 + panel_cols + gap_size for i in range(panel_cols)]
-        y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
+            if quadrant_selection == "All":
+                x_axis_range, y_axis_range = x_range_full, y_range_full
+                plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All')
+                show_axes = True
+                plot_bg_color = PLOT_AREA_COLOR
+            else:
+                plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant=quadrant_selection)
+                show_axes = False
+                plot_bg_color = BACKGROUND_COLOR
+                if quadrant_selection == "Q1": x_axis_range, y_axis_range = q1_x, q1_y
+                elif quadrant_selection == "Q2": x_axis_range, y_axis_range = q2_x, q2_y
+                elif quadrant_selection == "Q3": x_axis_range, y_axis_range = q3_x, q3_y
+                else: x_axis_range, y_axis_range = q4_x, q4_y
 
-        fig.update_layout(
-            title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(title="Unit Column Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            yaxis=dict(title="Unit Row Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            plot_bgcolor=plot_bg_color,
-            paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
-            shapes=plot_shapes,
-            legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top'),
-            height=800
-        )
-        st.plotly_chart(fig, use_container_width=True)
+            x_tick_pos = [i + 0.5 for i in range(panel_cols)] + [i + 0.5 + panel_cols + gap_size for i in range(panel_cols)]
+            y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
+
+            fig.update_layout(
+                title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
+                xaxis=dict(title="Unit Column Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
+                yaxis=dict(title="Unit Row Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
+                plot_bgcolor=plot_bg_color,
+                paper_bgcolor=BACKGROUND_COLOR,
+                shapes=plot_shapes,
+                legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top'),
+                height=800
+            )
+
+            selected_points = plotly_events(fig, click_event=False, hover_event=True, key="defect_map")
+
+        with image_col:
+            st.header("Defect Image")
+            if selected_points and selected_points[0]:
+                point_data = selected_points[0]
+                defect_id = point_data['customdata'][0]
+                image_path = point_data['customdata'][2]
+
+                if image_path:
+                    st.image(image_path, caption=f"Defect ID: {defect_id}", use_column_width=True)
+                else:
+                    st.info(f"No image uploaded for Defect ID: {defect_id}")
+            else:
+                st.info("Hover over a defect to see its image.")
 
     elif view_mode == "Pareto View":
         fig = go.Figure()
