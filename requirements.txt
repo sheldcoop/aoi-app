@@ -2,5 +2,8 @@ streamlit
 pandas
 plotly
 numpy
-openpyxl # Required by pandas to read .xlsx files
-xlsxwriter # NEW: Required for creating multi-sheet Excel reports
+openpyxl
+matplotlib
+xlsxwriter
+Pillow
+streamlit-plotly-events

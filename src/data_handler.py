@@ -44,7 +44,7 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
         # --- Fallback Path: Generate sample data ---
         st.sidebar.info("No file uploaded. Displaying sample data.")
         total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
-        number_of_defects = 150
+        number_of_defects = 1500
         defect_data = {
             'UNIT_INDEX_X': np.random.randint(0, total_rows, size=number_of_defects),
             'UNIT_INDEX_Y': np.random.randint(0, total_cols, size=number_of_defects),
@@ -75,5 +75,6 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
     df['plot_x'] = plot_x_base + x_offset + np.random.rand(len(df)) * 0.8 + 0.1
     df['plot_y'] = plot_y_base + y_offset + np.random.rand(len(df)) * 0.8 + 0.1
     
+    # This function now correctly returns only the DataFrame
     return df
 
