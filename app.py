@@ -142,7 +142,7 @@ def main():
 
             if quadrant_selection == "All":
                 FIGURE_WIDTH, FIGURE_HEIGHT = 800, 800
-                MARGIN = dict(l=20, r=200, t=50, b=20) # Increased right margin for legend
+                MARGIN = dict(l=20, r=20, t=20, b=20) # Increased right margin for legend
 
                 layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
                 cell_size = layout_data['cell_size']
@@ -211,8 +211,8 @@ def main():
                 xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
                 yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
                 plot_bgcolor=PLOT_AREA_COLOR, 
-                paper_bgcolor=BACKGROUND_COLOR,
-                showlegend=False,
+                paper_bgcolor='black',
+                showlegend=True,
                 height=800
             )
             st.plotly_chart(fig, use_container_width=True)
