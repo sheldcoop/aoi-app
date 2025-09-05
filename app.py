@@ -14,7 +14,7 @@ import numpy as np
 from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
 from src.data_handler import load_data
 from src.plotting import (
-    create_dynamic_grid, create_defect_traces,
+    create_dynamic_grid, create_single_panel_grid, create_defect_traces,
     create_pareto_trace, create_grouped_pareto_trace
 )
 from src.reporting import generate_excel_report
@@ -109,71 +109,69 @@ def main():
 
     # --- Main content area ---
     if view_mode == "Defect View":
-        # --- Dynamic Sizing Configuration ---
-        FIGURE_WIDTH = 800
-        FIGURE_HEIGHT = 800
-        MARGIN = dict(l=40, r=40, t=40, b=40)
-
-        # --- Create Grid and get layout data ---
-        # Note: We are not filtering by quadrant here, the grid is always 2x2
-        layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
-        cell_size = layout_data['cell_size']
-        gap_size_units = layout_data['gap_size_units']
-
-        # --- Coordinate Transformation for Defects ---
-        # This is now done here, where we have access to the dynamic cell_size
-        if not display_df.empty:
-            # Create a copy to avoid SettingWithCopyWarning
-            display_df = display_df.copy()
-
-            panel_width_units = panel_cols * cell_size
-            panel_height_units = panel_rows * cell_size
-
-            plot_x_base = (display_df['UNIT_INDEX_Y'] % panel_cols) * cell_size
-            plot_y_base = (display_df['UNIT_INDEX_X'] % panel_rows) * cell_size
-
-            x_offset = np.where(display_df['UNIT_INDEX_Y'] >= panel_cols, panel_width_units + gap_size_units, 0)
-            y_offset = np.where(display_df['UNIT_INDEX_X'] >= panel_rows, panel_height_units + gap_size_units, 0)
-
-            # Add jitter scaled by cell size to avoid perfect grid alignment
-            jitter_x = (np.random.rand(len(display_df)) * 0.8 + 0.1) * cell_size
-            jitter_y = (np.random.rand(len(display_df)) * 0.8 + 0.1) * cell_size
-
-            # Create the final plot coordinates
-            display_df.loc[:, 'plot_x'] = plot_x_base + x_offset + jitter_x
-            display_df.loc[:, 'plot_y'] = plot_y_base + y_offset + jitter_y
-
-        # --- Create Figure ---
         fig = go.Figure()
-        defect_traces = create_defect_traces(display_df)
-        for trace in defect_traces: fig.add_trace(trace)
-        
-        total_cols = 2 * panel_cols
-        tick_labels = list(range(total_cols))
 
-        fig.update_layout(
-            title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(
-                range=layout_data['x_axis_range'],
-                tickvals=layout_data['x_tick_pos'],
-                ticktext=tick_labels,
-                showgrid=False, zeroline=False
-            ),
-            yaxis=dict(
-                range=layout_data['y_axis_range'],
-                tickvals=layout_data['y_tick_pos'],
-                ticktext=tick_labels,
-                scaleanchor="x", scaleratio=1,
-                showgrid=False, zeroline=False
-            ),
-            plot_bgcolor=BACKGROUND_COLOR,
-            paper_bgcolor=BACKGROUND_COLOR,
-            width=FIGURE_WIDTH,
-            height=FIGURE_HEIGHT,
-            margin=MARGIN,
-            shapes=layout_data['shapes'],
-            legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top')
-        )
+        if quadrant_selection == "All":
+            # --- RENDER THE DYNAMIC 2x2 GRID (NEW) ---
+            FIGURE_WIDTH, FIGURE_HEIGHT = 800, 800
+            MARGIN = dict(l=40, r=40, t=40, b=40)
+
+            layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
+            cell_size = layout_data['cell_size']
+            gap_size_units = layout_data['gap_size_units']
+
+            if not display_df.empty:
+                display_df = display_df.copy()
+                panel_width_units = panel_cols * cell_size
+                panel_height_units = panel_rows * cell_size
+                plot_x_base = (display_df['UNIT_INDEX_Y'] % panel_cols) * cell_size
+                plot_y_base = (display_df['UNIT_INDEX_X'] % panel_rows) * cell_size
+                x_offset = np.where(display_df['UNIT_INDEX_Y'] >= panel_cols, panel_width_units + gap_size_units, 0)
+                y_offset = np.where(display_df['UNIT_INDEX_X'] >= panel_rows, panel_height_units + gap_size_units, 0)
+                jitter_x = (np.random.rand(len(display_df)) * 0.8 + 0.1) * cell_size
+                jitter_y = (np.random.rand(len(display_df)) * 0.8 + 0.1) * cell_size
+                display_df.loc[:, 'plot_x'] = plot_x_base + x_offset + jitter_x
+                display_df.loc[:, 'plot_y'] = plot_y_base + y_offset + jitter_y
+
+            defect_traces = create_defect_traces(display_df)
+            for trace in defect_traces: fig.add_trace(trace)
+
+            total_cols = 2 * panel_cols
+            tick_labels = list(range(total_cols))
+
+            fig.update_layout(
+                title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
+                xaxis=dict(range=layout_data['x_axis_range'], tickvals=layout_data['x_tick_pos'], ticktext=tick_labels, showgrid=False, zeroline=False),
+                yaxis=dict(range=layout_data['y_axis_range'], tickvals=layout_data['y_tick_pos'], ticktext=tick_labels, scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False),
+                plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
+                width=FIGURE_WIDTH, height=FIGURE_HEIGHT, margin=MARGIN,
+                shapes=layout_data['shapes'],
+                legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top')
+            )
+
+        else:
+            # --- RENDER A SINGLE ZOOMED-IN QUADRANT (OLD BEHAVIOR RESTORED) ---
+            plot_shapes = create_single_panel_grid(panel_rows, panel_cols)
+
+            if not display_df.empty:
+                display_df = display_df.copy()
+                # Coordinate transformation for a single panel view
+                display_df.loc[:, 'plot_x'] = (display_df['UNIT_INDEX_Y'] % panel_cols) + np.random.rand(len(display_df)) * 0.8 + 0.1
+                display_df.loc[:, 'plot_y'] = (display_df['UNIT_INDEX_X'] % panel_rows) + np.random.rand(len(display_df)) * 0.8 + 0.1
+
+            defect_traces = create_defect_traces(display_df)
+            for trace in defect_traces: fig.add_trace(trace)
+
+            fig.update_layout(
+                title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
+                xaxis=dict(range=[0, panel_cols], showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(range=[0, panel_rows], showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x", scaleratio=1),
+                plot_bgcolor=PLOT_AREA_COLOR, paper_bgcolor=BACKGROUND_COLOR,
+                shapes=plot_shapes,
+                height=800,
+                legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top')
+            )
+
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Pareto View":

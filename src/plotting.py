@@ -114,6 +114,37 @@ def create_dynamic_grid(panel_rows, panel_cols, gap_cells, figure_width, figure_
     return layout_data
 
 
+def create_single_panel_grid(panel_rows, panel_cols):
+    """
+    Generates the shapes for a single panel grid, used for the zoomed-in quadrant view.
+    """
+    shapes = []
+    # Panel background and main border
+    shapes.append(go.layout.Shape(
+        type="rect",
+        x0=0, y0=0,
+        x1=panel_cols, y1=panel_rows,
+        line=dict(color=GRID_COLOR, width=3),
+        fillcolor=PANEL_COLOR,
+        layer='below'
+    ))
+    # Inner grid lines (vertical)
+    for i in range(1, panel_cols):
+        shapes.append(go.layout.Shape(
+            type="line", x0=i, y0=0, x1=i, y1=panel_rows,
+            line=dict(color=GRID_COLOR, width=0.5, dash='dot'),
+            opacity=0.5, layer='below'
+        ))
+    # Inner grid lines (horizontal)
+    for i in range(1, panel_rows):
+        shapes.append(go.layout.Shape(
+            type="line", x0=0, y0=i, x1=panel_cols, y1=i,
+            line=dict(color=GRID_COLOR, width=0.5, dash='dot'),
+            opacity=0.5, layer='below'
+        ))
+    return shapes
+
+
 def create_defect_traces(df):
     """Creates a scatter trace for each defect type."""
     traces = []
