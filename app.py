@@ -210,8 +210,8 @@ def main():
                 title=dict(text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR), x=0.5),
                 xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
                 yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-                plot_bgcolor=PLOT_AREA_COLOR, 
-                paper_bgcolor='black',
+                plot_bgcolor='black', 
+                paper_bgcolor= BACKGROUND_COLOR,
                 showlegend=True,
                 height=800
             )
