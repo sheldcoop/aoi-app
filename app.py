@@ -133,7 +133,7 @@ def main():
 
             if quadrant_selection == "All":
                 # --- RENDER THE DYNAMIC 2x2 GRID (NEW) ---
-                FIGURE_WIDTH, FIGURE_HEIGHT = 900, 900 # Fixed square size
+                FIGURE_WIDTH, FIGURE_HEIGHT = 800, 800 # Fixed square size
                 MARGIN = dict(l=20, r=120, t=20, b=20)
 
                 layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
@@ -188,7 +188,7 @@ def main():
                     yaxis=dict(range=[0, panel_rows], showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x", scaleratio=1),
                 plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
                     shapes=plot_shapes,
-                    height=800,
+                    height=1000,
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
                 )
 
