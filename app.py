@@ -71,6 +71,23 @@ def main():
              .st-emotion-cache-fplge9 div {{ /* Metric Value */
                 font-size: 28px;
             }}
+
+            /* Fancy button style */
+            .stButton>button {{
+                border: 2px solid #4A4A4A;
+                border-radius: 10px;
+                background-color: #4CAF50; /* Green */
+                color: white;
+                padding: 10px 24px;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: bold;
+                transition: all 0.3s ease-in-out;
+            }}
+            .stButton>button:hover {{
+                background-color: #45a049;
+                transform: scale(1.05);
+            }}
         </style>
     """, unsafe_allow_html=True)
     
@@ -79,31 +96,33 @@ def main():
     # --- Sidebar Control Panel ---
     with st.sidebar:
         st.header("Control Panel")
-        st.divider()
         
-        st.subheader("Data Source")
-        uploaded_files = st.file_uploader(
-            "Upload Your Defect Data (Excel)",
-            type=["xlsx", "xls"],
-            accept_multiple_files=True,
-            on_change=reset_analysis_state
-        )
-        
-        st.divider()
+        # --- Data & Analysis Expander ---
+        with st.expander("Data Source & Analysis", expanded=True):
+            st.subheader("Data Source")
+            uploaded_files = st.file_uploader(
+                "Upload Your Defect Data (Excel)",
+                type=["xlsx", "xls"],
+                accept_multiple_files=True,
+                on_change=reset_analysis_state
+            )
 
-        if st.button("Run Analysis", use_container_width=True):
-            st.session_state.analysis_run = True
-        
-        st.subheader("Configuration")
-        panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
-        panel_cols = st.number_input("Panel Columns", min_value=2, max_value=50, value=7)
-        gap_size = 1 
+            lot_number = st.text_input("Enter Lot Number (Optional)")
 
-        st.divider()
+            st.subheader("Configuration")
+            panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
+            panel_cols = st.number_input("Panel Columns", min_value=2, max_value=50, value=7)
+            gap_size = 1
 
-        st.subheader("Analysis Controls")
-        view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
-        quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
+            st.divider()
+            if st.button("🚀 Run Analysis", use_container_width=True):
+                st.session_state.analysis_run = True
+
+        # --- View Controls Expander ---
+        with st.expander("View Controls", expanded=True):
+            st.subheader("Analysis Controls")
+            view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
+            quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
     # --- Main Application Logic ---
     if st.session_state.analysis_run:
@@ -174,6 +193,23 @@ def main():
                     shapes=layout_data['shapes'],
                     legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
                 )
+
+                # --- Add Lot Number Annotation if provided ---
+                if lot_number:
+                    fig.add_annotation(
+                        x=layout_data['total_width'],
+                        y=layout_data['total_height'] + layout_data['gap_size_units'],
+                        text=f"<b>Lot: {lot_number}</b>",
+                        showarrow=False,
+                        xanchor="right",
+                        yanchor="top",
+                        font=dict(
+                            family="Arial, sans-serif",
+                            size=16,
+                            color=TEXT_COLOR
+                        ),
+                        align="right"
+                    )
 
             else: # Single Quadrant View
                 plot_shapes = create_single_panel_grid(panel_rows, panel_cols)
