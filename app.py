@@ -30,6 +30,15 @@ def main():
     # --- App Configuration ---
     st.set_page_config(layout="wide", page_title="Panel Defect Analysis")
     
+    # --- STATE MANAGEMENT INITIALIZATION ---
+    if 'analysis_run' not in st.session_state:
+        st.session_state.analysis_run = False
+
+    def reset_analysis_state():
+        st.session_state.analysis_run = False
+        # Also clear the cached data loading function
+        load_data.clear()
+
     # --- Apply Custom CSS for a Professional UI ---
     st.markdown(f"""
         <style>
@@ -70,11 +79,17 @@ def main():
         st.divider()
         
         st.subheader("Data Source")
-        uploaded_files = st.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"], accept_multiple_files=True)
+        uploaded_files = st.file_uploader(
+            "Upload Your Defect Data (Excel)",
+            type=["xlsx", "xls"],
+            accept_multiple_files=True,
+            on_change=reset_analysis_state
+        )
         
         st.divider()
 
-        run_analysis = st.button("Run Analysis", use_container_width=True)
+        if st.button("Run Analysis", use_container_width=True):
+            st.session_state.analysis_run = True
         
         st.subheader("Configuration")
         panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
@@ -88,8 +103,7 @@ def main():
         quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
     # --- Main Application Logic ---
-    # This part of the app will only run when the user clicks the 'Run Analysis' button.
-    if run_analysis:
+    if st.session_state.analysis_run:
         # --- Load and filter data ---
         full_df = load_data(uploaded_files, panel_rows, panel_cols, gap_size)
 
@@ -100,7 +114,6 @@ def main():
         display_df = full_df[full_df['QUADRANT'] == quadrant_selection] if quadrant_selection != "All" else full_df
 
         # --- Add Download Report Button to Sidebar ---
-        # Note: This is now inside the 'if run_analysis' block
         with st.sidebar:
             st.divider()
             st.subheader("Reporting")
@@ -255,7 +268,7 @@ def main():
                 )
                 st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Upload files and click 'Run Analysis' to begin.")
+        st.info("Upload your Excel file(s) and click 'Run Analysis' to begin.")
 
 if __name__ == '__main__':
     main()
