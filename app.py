@@ -134,7 +134,7 @@ def main():
             if quadrant_selection == "All":
                 # --- RENDER THE DYNAMIC 2x2 GRID (NEW) ---
                 FIGURE_WIDTH, FIGURE_HEIGHT = 900, 900 # Fixed square size
-                MARGIN = dict(l=20, r=80, t=20, b=20)
+                MARGIN = dict(l=20, r=120, t=20, b=20)
 
                 layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
                 cell_size = layout_data['cell_size']
