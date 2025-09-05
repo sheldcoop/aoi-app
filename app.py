@@ -169,7 +169,7 @@ def main():
                     title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
                     xaxis=dict(range=layout_data['x_axis_range'], tickvals=layout_data['x_tick_pos'], ticktext=tick_labels, showgrid=False, zeroline=False),
                     yaxis=dict(range=layout_data['y_axis_range'], tickvals=layout_data['y_tick_pos'], ticktext=tick_labels, scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False),
-                    plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
+                    plot_bgcolor='#E58A60', paper_bgcolor=BACKGROUND_COLOR,
                     width=FIGURE_WIDTH, height=FIGURE_HEIGHT, margin=MARGIN,
                     shapes=layout_data['shapes'],
                     legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
@@ -191,7 +191,7 @@ def main():
                     yaxis=dict(range=[0, panel_rows-1], showgrid=False, zeroline=False, showticklabels=True, scaleanchor="x", scaleratio=1),
                     plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
                     shapes=plot_shapes,
-                    height=900,
+                    height=800,
                     margin=dict(l=20, r=20, t=20, b=20),
                     legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
                 )
