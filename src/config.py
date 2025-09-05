@@ -6,7 +6,7 @@
 
 PANEL_COLOR = '#8B4513'
 GRID_COLOR = 'black'
-BACKGROUND_COLOR = '#0E1117'
+BACKGROUND_COLOR = 'white'
 PLOT_AREA_COLOR = '#F4A460'
 TEXT_COLOR = 'black'       # White text for readability on the dark background.
 
