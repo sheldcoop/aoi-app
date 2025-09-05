@@ -213,9 +213,9 @@ def main():
                 plot_bgcolor='black', 
                 paper_bgcolor= BACKGROUND_COLOR,
                 showlegend=False,
-                height=800
+                height=600
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=False)
 
         elif view_mode == "Summary View":
             st.header(f"Statistical Summary for Quadrant: {quadrant_selection}")
