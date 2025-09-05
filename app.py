@@ -191,8 +191,8 @@ def main():
                     yaxis=dict(range=[-1, panel_rows + 1], showgrid=False, zeroline=False, showticklabels=True, scaleanchor="x", scaleratio=1),
                     plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
                     shapes=plot_shapes,
-                    height=800,
-                    margin=dict(l=40, r=200, t=80, b=40),
+                    height=900,
+                    margin=dict(l=20, r=20, t=20, b=20),
                     legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
                 )
 
@@ -212,7 +212,7 @@ def main():
                 yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
                 plot_bgcolor='black', 
                 paper_bgcolor= BACKGROUND_COLOR,
-                showlegend=True,
+                showlegend=False,
                 height=800
             )
             st.plotly_chart(fig, use_container_width=True)
