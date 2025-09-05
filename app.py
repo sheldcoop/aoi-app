@@ -133,22 +133,8 @@ def main():
 
             if quadrant_selection == "All":
                 # --- RENDER THE DYNAMIC 2x2 GRID (NEW) ---
-
-                # --- Dynamic Figure Sizing (to remove whitespace) ---
-                NUM_PANELS_X, NUM_PANELS_Y = 2, 2
-                total_cell_units_x = (NUM_PANELS_X * panel_cols) + (NUM_PANELS_X + 1) * gap_size
-                total_cell_units_y = (NUM_PANELS_Y * panel_rows) + (NUM_PANELS_Y + 1) * gap_size
-
-                # Handle potential division by zero if total_cell_units_y is 0
-                aspect_ratio = total_cell_units_x / total_cell_units_y if total_cell_units_y > 0 else 1
-
-                FIGURE_HEIGHT = 800 # Keep height constant
+                FIGURE_WIDTH, FIGURE_HEIGHT = 800, 800 # Fixed square size
                 MARGIN = dict(l=10, r=10, t=50, b=10)
-
-                # Calculate width based on height and aspect ratio of the grid
-                plottable_height = FIGURE_HEIGHT - MARGIN['t'] - MARGIN['b']
-                plottable_width = plottable_height * aspect_ratio
-                FIGURE_WIDTH = plottable_width + MARGIN['l'] + MARGIN['r']
 
                 layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
                 cell_size = layout_data['cell_size']
@@ -200,13 +186,13 @@ def main():
                     title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
                     xaxis=dict(range=[0, panel_cols], showgrid=False, zeroline=False, showticklabels=False),
                     yaxis=dict(range=[0, panel_rows], showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x", scaleratio=1),
-                    plot_bgcolor=PLOT_AREA_COLOR, paper_bgcolor=BACKGROUND_COLOR,
+                plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
                     shapes=plot_shapes,
                     height=800,
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
                 )
 
-            st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=False)
 
         elif view_mode == "Pareto View":
             fig = go.Figure()
