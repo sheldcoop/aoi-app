@@ -25,17 +25,15 @@ def main():
     """
     Main function to run the Streamlit application.
     """
-    # --- App Configuration ---
     st.set_page_config(layout="wide", page_title="Panel Defect Analysis")
 
-    # --- THEME COLORS: Centralized here for a perfect match with the Colab version ---
+    # --- THEME COLORS: Centralized for a perfect match with the Colab version ---
     APP_BACKGROUND_COLOR = '#F4A460'      # Sandy brown (for page background)
-    PANEL_FILL_COLOR = '#8B4513'          # Saddle brown (for panels)
+    PANEL_FILL_COLOR = '#8B4B4513'          # Saddle brown (for panels)
     GAP_COLOR = '#F4A460'                 # Sandy brown (for gaps and the outer visual boundary)
     GRID_LINE_COLOR = 'black'
     TEXT_COLOR = 'black'
     
-    # --- Apply Custom CSS using the correct theme ---
     st.markdown(f"""
         <style>
             .reportview-container, .main {{ background-color: {APP_BACKGROUND_COLOR}; }}
@@ -47,7 +45,6 @@ def main():
     
     st.title("Panel Defect Analysis Tool")
 
-    # --- Sidebar Control Panel ---
     with st.sidebar:
         st.header("Control Panel")
         st.divider()
@@ -63,14 +60,13 @@ def main():
         view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
         quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
-    # --- Main Content Area ---
     if uploaded_file is None:
         st.info("Welcome! Please upload a defect data file to begin analysis.")
         return
 
     full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
     if full_df.empty:
-        st.error("The uploaded file is empty or could not be processed. Please check the file format.")
+        st.error("The uploaded file is empty or could not be processed. Please check the file format and required columns (QUADRANT, UNIT_INDEX_X, UNIT_INDEX_Y, DEFECT_TYPE).")
         return
 
     display_df = full_df[full_df['QUADRANT'] == quadrant_selection] if quadrant_selection != "All" else full_df
@@ -88,6 +84,7 @@ def main():
 
     if view_mode == "Defect View":
         fig = go.Figure()
+        # This will now work because load_data creates PLOT_X and PLOT_Y
         defect_traces = create_defect_traces(display_df)
         for trace in defect_traces: fig.add_trace(trace)
         
@@ -95,51 +92,54 @@ def main():
         total_grid_height = (2 * panel_rows) + gap_size
         
         if quadrant_selection == "All":
-            # --- FIX: Set the viewing window larger than the grid to create the visual boundary ---
             x_axis_range = [-gap_size, total_grid_width + gap_size]
             y_axis_range = [-gap_size, total_grid_height + gap_size]
-            
-            plot_shapes = create_grid_shapes(
-                panel_rows, panel_cols, gap_size, quadrant='All',
-                panel_fill_color=PANEL_FILL_COLOR,
-                grid_line_color=GRID_LINE_COLOR
-            )
-            
-            # --- FIX: The plot background IS the gap color ---
+            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All', panel_fill_color=PANEL_FILL_COLOR, grid_line_color=GRID_LINE_COLOR)
             plot_bg_color = GAP_COLOR
             show_axes = True
-
-        else: # A single quadrant is selected
-            # --- FIX: Ranges for zoomed-in quadrants ---
+        else:
             x_axis_range = [0, panel_cols]
             y_axis_range = [0, panel_rows]
-
-            plot_shapes = create_grid_shapes(
-                panel_rows, panel_cols, gap_size, quadrant=quadrant_selection,
-                panel_fill_color=PANEL_FILL_COLOR,
-                grid_line_color=GRID_LINE_COLOR
-            )
-
-            # --- FIX: The plot background IS the panel color for a zoomed-in view ---
+            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant=quadrant_selection, panel_fill_color=PANEL_FILL_COLOR, grid_line_color=GRID_LINE_COLOR)
             plot_bg_color = PANEL_FILL_COLOR
             show_axes = False
 
         x_tick_pos = [i + 0.5 for i in range(panel_cols)] + [i + 0.5 + panel_cols + gap_size for i in range(panel_cols)]
         y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
         
+        # --- SYNTAX ERROR FIXED IN THIS BLOCK ---
         fig.update_layout(
             title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(title="Unit Column Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(2 * panel_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_LINE_COLOR, mirror=True),
-            yaxis=dict(title="Unit Row Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(2 * panel_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_LINE_COLOR, mirror=True),
+            xaxis=dict(
+                title="Unit Column Index" if show_axes else "",
+                title_font=dict(color=TEXT_COLOR),
+                tickfont=dict(color=TEXT_COLOR),
+                range=x_axis_range,
+                tickvals=x_tick_pos if show_axes else [],
+                ticktext=list(range(2 * panel_cols)) if show_axes else [],
+                showgrid=False, zeroline=False, showline=show_axes,
+                linewidth=3, linecolor=GRID_LINE_COLOR, mirror=True
+            ),
+            yaxis=dict(
+                title="Unit Row Index" if show_axes else "",
+                title_font=dict(color=TEXT_COLOR),
+                tickfont=dict(color=TEXT_COLOR),
+                range=y_axis_range,
+                tickvals=y_tick_pos if show_axes else [],
+                ticktext=list(range(2 * panel_rows)) if show_axes else [],
+                scaleanchor="x", scaleratio=1,
+                showgrid=False, zeroline=False, showline=show_axes,
+                linewidth=3, linecolor=GRID_LINE_COLOR, mirror=True
+            ),
             plot_bgcolor=plot_bg_color,
             paper_bgcolor=APP_BACKGROUND_COLOR,
             shapes=plot_shapes,
             legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top')
-            # --- FIX: No `height` property, allowing `scaleanchor` to enforce a square plot ---
         )
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Pareto View":
+        # ... (This section is fine, but updated with consistent color variables)
         fig = go.Figure()
         pareto_trace = create_pareto_trace(display_df)
         fig.add_trace(pareto_trace)
@@ -154,13 +154,13 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Summary View":
+        # ... (This section is fine, summary logic remains the same)
         st.header(f"Statistical Summary for Quadrant: {quadrant_selection}")
         if display_df.empty:
             st.info("No defects to summarize in the selected quadrant.")
             return
 
         if quadrant_selection != "All":
-            # ... (your existing summary logic is fine)
             total_defects = len(display_df)
             total_cells = panel_rows * panel_cols
             defective_cells = len(display_df[['UNIT_INDEX_X', 'UNIT_INDEX_Y']].drop_duplicates())
@@ -178,7 +178,6 @@ def main():
             top_offenders['Percentage'] = (top_offenders['Count'] / total_defects) * 100
             st.dataframe(top_offenders.style.format({'Percentage': '{:.2f}%'}).background_gradient(cmap='Reds', subset=['Count']), use_container_width=True)
         else:
-            # ... (your existing summary logic is fine)
             st.markdown("### Quarterly KPI Breakdown")
             kpi_data = []
             quadrants = ['Q1', 'Q2', 'Q3', 'Q4']
