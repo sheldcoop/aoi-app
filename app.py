@@ -70,9 +70,11 @@ def main():
         st.divider()
         
         st.subheader("Data Source")
-        uploaded_file = st.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"])
+        uploaded_files = st.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"], accept_multiple_files=True)
         
         st.divider()
+
+        run_analysis = st.button("Run Analysis", use_container_width=True)
         
         st.subheader("Configuration")
         panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
@@ -85,15 +87,20 @@ def main():
         view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
         quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
+# --- Main Application Logic ---
+# This part of the app will only run when the user clicks the 'Run Analysis' button.
+if run_analysis:
     # --- Load and filter data ---
-    full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
+    full_df = load_data(uploaded_files, panel_rows, panel_cols, gap_size)
+
     if full_df.empty:
-        st.warning("No data to display. Please upload a valid Excel file.")
-        return
+        st.warning("No data to display. Please upload valid Excel file(s) and click 'Run Analysis'.")
+        st.stop()
 
     display_df = full_df[full_df['QUADRANT'] == quadrant_selection] if quadrant_selection != "All" else full_df
 
     # --- Add Download Report Button to Sidebar ---
+    # Note: This is now inside the 'if run_analysis' block
     with st.sidebar:
         st.divider()
         st.subheader("Reporting")
@@ -114,7 +121,7 @@ def main():
         if quadrant_selection == "All":
             # --- RENDER THE DYNAMIC 2x2 GRID (NEW) ---
             FIGURE_WIDTH, FIGURE_HEIGHT = 800, 800
-            MARGIN = dict(l=40, r=40, t=40, b=40)
+            MARGIN = dict(l=10, r=10, t=50, b=10) # Reduced margins
 
             layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
             cell_size = layout_data['cell_size']
@@ -146,7 +153,7 @@ def main():
                 plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
                 width=FIGURE_WIDTH, height=FIGURE_HEIGHT, margin=MARGIN,
                 shapes=layout_data['shapes'],
-                legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top')
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
             )
 
         else:
@@ -169,7 +176,7 @@ def main():
                 plot_bgcolor=PLOT_AREA_COLOR, paper_bgcolor=BACKGROUND_COLOR,
                 shapes=plot_shapes,
                 height=800,
-                legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top')
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
             )
 
         st.plotly_chart(fig, use_container_width=True)

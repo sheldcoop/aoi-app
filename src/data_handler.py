@@ -10,36 +10,40 @@ import numpy as np
 # ==============================================================================
 
 @st.cache_data
-def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
+def load_data(uploaded_files, panel_rows, panel_cols, gap_size):
     """
-    Loads, prepares, and caches the defect data from a user-uploaded file.
-    If no file is uploaded, it falls back to generating sample data.
+    Loads and prepares defect data from one or more user-uploaded files.
+    If no files are uploaded, it falls back to generating sample data.
     """
-    if uploaded_file is not None:
-        # --- Production Path: Load from uploaded Excel file ---
-        st.sidebar.success("Excel file uploaded successfully!")
-        df = pd.read_excel(uploaded_file, engine='openpyxl')
-        
-        # --- Data Cleaning and Validation ---
-        required_columns = ['DEFECT_TYPE', 'UNIT_INDEX_X', 'UNIT_INDEX_Y']
-        # Check if all required columns are present
-        if not all(col in df.columns for col in required_columns):
-            st.error(f"The uploaded file is missing one of the required columns: {required_columns}")
-            return pd.DataFrame() # Return empty dataframe to prevent crashes
-            
-        # Select only the columns we need
-        df = df[required_columns]
-        
-        # Remove rows with missing values in our key columns
-        df.dropna(subset=required_columns, inplace=True)
+    if uploaded_files:
+        # --- Production Path: Load from uploaded Excel file(s) ---
+        all_dfs = []
+        for uploaded_file in uploaded_files:
+            try:
+                df = pd.read_excel(uploaded_file, engine='openpyxl')
 
-        # Ensure data types are correct
-        df['UNIT_INDEX_X'] = df['UNIT_INDEX_X'].astype(int)
-        df['UNIT_INDEX_Y'] = df['UNIT_INDEX_Y'].astype(int)
+                # --- Data Cleaning and Validation ---
+                required_columns = ['DEFECT_TYPE', 'UNIT_INDEX_X', 'UNIT_INDEX_Y']
+                if not all(col in df.columns for col in required_columns):
+                    st.error(f"File '{uploaded_file.name}' is missing required columns. Skipping.")
+                    continue
+
+                df = df[required_columns]
+                df.dropna(subset=required_columns, inplace=True)
+                df['UNIT_INDEX_X'] = df['UNIT_INDEX_X'].astype(int)
+                df['UNIT_INDEX_Y'] = df['UNIT_INDEX_Y'].astype(int)
+                df['DEFECT_TYPE'] = df['DEFECT_TYPE'].str.strip()
+                all_dfs.append(df)
+            except Exception as e:
+                st.error(f"Error processing file '{uploaded_file.name}': {e}")
         
-        # Clean up defect type strings
-        df['DEFECT_TYPE'] = df['DEFECT_TYPE'].str.strip()
-        
+        if not all_dfs:
+            st.warning("No valid data could be loaded from the uploaded file(s).")
+            return pd.DataFrame()
+
+        st.sidebar.success(f"{len(all_dfs)} file(s) loaded successfully!")
+        df = pd.concat(all_dfs, ignore_index=True)
+
     else:
         # --- Fallback Path: Generate sample data ---
         st.sidebar.info("No file uploaded. Displaying sample data.")
