@@ -121,7 +121,7 @@ def main():
             gap_size = 1
 
             st.divider()
-            if st.button("🚀 Run Analysis", width='stretch'):
+            if st.button("🚀 Run Analysis", use_container_width=True):
                 st.session_state.analysis_run = True
 
         # --- View Controls Expander ---
@@ -153,7 +153,7 @@ def main():
             base_df = base_df[base_df['DEFECT_TYPE'] == st.session_state.selected_defect]
             with st.sidebar:
                 st.info(f"Filtering for: **{st.session_state.selected_defect}**")
-                if st.button("Clear Defect Filter", width='stretch'):
+                if st.button("Clear Defect Filter", use_container_width=True):
                     st.session_state.selected_defect = None
                     st.rerun() # Rerun to apply the cleared filter immediately
 
@@ -185,7 +185,7 @@ def main():
             # Center the plot on the page
             _, chart_col, _ = st.columns([1, 3, 1])
             with chart_col:
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True)
 
         elif view_mode == "Pareto View":
             st.write("Click on a bar in the Pareto chart to filter the entire dashboard by that defect type.")
@@ -243,7 +243,7 @@ def main():
                 top_offenders = display_df['DEFECT_TYPE'].value_counts().reset_index()
                 top_offenders.columns = ['Defect Type', 'Count']
                 top_offenders['Percentage'] = (top_offenders['Count'] / total_defects) * 100
-                st.dataframe(top_offenders.style.format({'Percentage': '{:.2f}%'}).background_gradient(cmap='Reds', subset=['Count']), width='stretch')
+                st.dataframe(top_offenders.style.format({'Percentage': '{:.2f}%'}).background_gradient(cmap='Reds', subset=['Count']), use_container_width=True)
 
             else: # "All" is selected, show the Quarterly Breakdown
                 st.markdown("### Quarterly KPI Breakdown")
@@ -257,7 +257,7 @@ def main():
                     kpi_data.append({"Quadrant": quad, "Total Defects": total_defects, "Defect Density": f"{density:.2f}"})
 
                 kpi_df = pd.DataFrame(kpi_data)
-                st.dataframe(kpi_df, width='stretch')
+                st.dataframe(kpi_df, use_container_width=True)
 
                 st.divider()
                 st.markdown("### Defect Distribution by Quadrant")
@@ -274,7 +274,7 @@ def main():
                     legend=dict(font=dict(color=TEXT_COLOR)),
                     height=600
                 )
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Upload your Excel file(s) and click 'Run Analysis' to begin.")
 
