@@ -1,26 +1,4 @@
-# app.py
-
-"""
-Main application file for the Defect Analysis Streamlit Dashboard.
-This script acts as the main entry point and orchestrates the UI and logic.
-"""
-
-import streamlit as st
-import plotly.graph_objects as go
-import pandas as pd
-
-# Import our modularized functions
-from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
-from src.data_handler import load_data
-from src.plotting import (
-    create_grid_shapes, create_defect_traces, 
-    create_pareto_trace, create_grouped_pareto_trace
-)
-from src.reporting import generate_excel_report
-
-# ==============================================================================
-# --- STREAMLIT APP MAIN LOGIC ---
-# ==============================================================================
+# Replace your existing main() function with this one
 
 def main():
     """
@@ -112,19 +90,38 @@ def main():
         defect_traces = create_defect_traces(display_df)
         for trace in defect_traces: fig.add_trace(trace)
         
-        total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
-        total_width, total_height = 2 * panel_cols + gap_size, 2 * panel_rows + gap_size
-        x_range_full, y_range_full = [-1, total_width + 1], [-1, total_height + 1]
+        # --- MODIFIED --- Calculate total width/height of panels for boundary
+        total_panel_width = (2 * panel_cols) + gap_size
+        total_panel_height = (2 * panel_rows) + gap_size
+        
+        # --- MODIFIED --- Update ranges to include the new boundary
+        x_range_full, y_range_full = [-gap_size, total_panel_width], [-gap_size, total_panel_height]
+        
         q1_x, q1_y = [0, panel_cols], [0, panel_rows]
-        q2_x, q2_y = [panel_cols + gap_size, total_width], [0, panel_rows]
-        q3_x, q3_y = [0, panel_cols], [panel_rows + gap_size, total_height]
-        q4_x, q4_y = [panel_cols + gap_size, total_width], [panel_rows + gap_size, total_height]
+        q2_x, q2_y = [panel_cols + gap_size, total_panel_width - gap_size], [0, panel_rows] # Corrected Q2 range
+        q3_x, q3_y = [0, panel_cols], [panel_rows + gap_size, total_panel_height - gap_size] # Corrected Q3 range
+        q4_x, q4_y = [panel_cols + gap_size, total_panel_width - gap_size], [panel_rows + gap_size, total_panel_height - gap_size] # Corrected Q4 range
         
         if quadrant_selection == "All":
             x_axis_range, y_axis_range = x_range_full, y_range_full
             plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All')
+            
+            # --- NEW --- Inject the solid boundary shape at the beginning of the list
+            # This ensures it's drawn behind everything else.
+            boundary_shape = go.layout.Shape(
+                type="rect",
+                x0=-gap_size,
+                y0=-gap_size,
+                x1=total_panel_width,
+                y1=total_panel_height,
+                fillcolor=PLOT_AREA_COLOR, # Use your existing plot area color for the boundary
+                line_width=0,
+                layer='below'
+            )
+            plot_shapes.insert(0, boundary_shape)
+            
             show_axes = True
-            plot_bg_color = PLOT_AREA_COLOR
+            plot_bg_color = BACKGROUND_COLOR # The plot background will be the 'gap' color
         else:
             plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant=quadrant_selection)
             show_axes = False
@@ -134,6 +131,8 @@ def main():
             elif quadrant_selection == "Q3": x_axis_range, y_axis_range = q3_x, q3_y
             else: x_axis_range, y_axis_range = q4_x, q4_y
 
+        total_cols = 2 * panel_cols
+        total_rows = 2 * panel_rows
         x_tick_pos = [i + 0.5 for i in range(panel_cols)] + [i + 0.5 + panel_cols + gap_size for i in range(panel_cols)]
         y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
         
@@ -142,13 +141,14 @@ def main():
             xaxis=dict(title="Unit Column Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
             yaxis=dict(title="Unit Row Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
             plot_bgcolor=plot_bg_color, 
-            paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
+            paper_bgcolor=BACKGROUND_COLOR,
             shapes=plot_shapes,
             legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top'), 
             height=800
         )
         st.plotly_chart(fig, use_container_width=True)
 
+    # ... The rest of your elif statements for "Pareto View" and "Summary View" remain unchanged ...
     elif view_mode == "Pareto View":
         fig = go.Figure()
         pareto_trace = create_pareto_trace(display_df)
@@ -222,7 +222,3 @@ def main():
                 height=600
             )
             st.plotly_chart(fig, use_container_width=True)
-
-if __name__ == '__main__':
-    main()
-
