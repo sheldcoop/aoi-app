@@ -187,8 +187,8 @@ def main():
 
                 fig.update_layout(
                     title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-                    xaxis=dict(range=[-1, panel_cols + 1], showgrid=False, zeroline=False, showticklabels=True),
-                    yaxis=dict(range=[-1, panel_rows + 1], showgrid=False, zeroline=False, showticklabels=True, scaleanchor="x", scaleratio=1),
+                    xaxis=dict(range=[0, panel_cols ], showgrid=False, zeroline=False, showticklabels=True),
+                    yaxis=dict(range=[, panel_rows], showgrid=False, zeroline=False, showticklabels=True, scaleanchor="x", scaleratio=1),
                     plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
                     shapes=plot_shapes,
                     height=900,
