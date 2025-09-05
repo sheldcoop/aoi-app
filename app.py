@@ -9,12 +9,16 @@ import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
+from streamlit_plotly_events import plotly_events
 
 # Import our modularized functions
-from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
+from src.config import (
+    BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR,
+    BUTTON_COLOR, BUTTON_HOVER_COLOR, BUTTON_BORDER_COLOR
+)
 from src.data_handler import load_data
 from src.plotting import (
-    create_dynamic_grid, create_single_panel_grid, create_defect_traces,
+    create_defect_view_figure,
     create_pareto_trace, create_grouped_pareto_trace
 )
 from src.reporting import generate_excel_report
@@ -33,13 +37,15 @@ def main():
     # --- STATE MANAGEMENT INITIALIZATION ---
     if 'analysis_run' not in st.session_state:
         st.session_state.analysis_run = False
-    # State to store processed data for stable jitter
     if 'processed_df' not in st.session_state:
         st.session_state.processed_df = pd.DataFrame()
+    if 'selected_defect' not in st.session_state:
+        st.session_state.selected_defect = None
 
     def reset_analysis_state():
         st.session_state.analysis_run = False
-        st.session_state.processed_df = pd.DataFrame() # Also reset our new state
+        st.session_state.processed_df = pd.DataFrame()
+        st.session_state.selected_defect = None
         load_data.clear()
 
     # --- Apply Custom CSS for a Professional UI ---
@@ -74,9 +80,9 @@ def main():
 
             /* Fancy button style */
             .stButton>button {{
-                border: 2px solid #4A4A4A;
+                border: 2px solid {BUTTON_BORDER_COLOR};
                 border-radius: 10px;
-                background-color: #4CAF50; /* Green */
+                background-color: {BUTTON_COLOR};
                 color: white;
                 padding: 10px 24px;
                 cursor: pointer;
@@ -85,7 +91,7 @@ def main():
                 transition: all 0.3s ease-in-out;
             }}
             .stButton>button:hover {{
-                background-color: #45a049;
+                background-color: {BUTTON_HOVER_COLOR};
                 transform: scale(1.05);
             }}
         </style>
@@ -138,15 +144,29 @@ def main():
             full_df['jitter_y'] = np.random.rand(len(full_df)) * 0.8 + 0.1
             st.session_state.processed_df = full_df.copy()
 
-        # Use the processed dataframe from session state from now on
-        display_df = st.session_state.processed_df[
-            st.session_state.processed_df['QUADRANT'] == quadrant_selection
-        ] if quadrant_selection != "All" else st.session_state.processed_df.copy()
+        # --- Data Filtering Logic ---
+        # Start with the full processed dataset
+        base_df = st.session_state.processed_df.copy()
+
+        # 1. Filter by selected defect type (from interactive chart)
+        if st.session_state.selected_defect:
+            base_df = base_df[base_df['DEFECT_TYPE'] == st.session_state.selected_defect]
+            with st.sidebar:
+                st.info(f"Filtering for: **{st.session_state.selected_defect}**")
+                if st.button("Clear Defect Filter", use_container_width=True):
+                    st.session_state.selected_defect = None
+                    st.rerun() # Rerun to apply the cleared filter immediately
+
+        # 2. Filter by selected quadrant
+        display_df = base_df[
+            base_df['QUADRANT'] == quadrant_selection
+        ] if quadrant_selection != "All" else base_df
 
         # --- Add Download Report Button to Sidebar ---
         with st.sidebar:
             st.divider()
             st.subheader("Reporting")
+            # Note: The report should be based on the full, unfiltered data
             excel_report_bytes = generate_excel_report(full_df, panel_rows, panel_cols)
             st.download_button(
                 label="Download Full Report",
@@ -157,80 +177,10 @@ def main():
 
         # --- Main content area ---
         if view_mode == "Defect View":
-            fig = go.Figure()
-
-            if quadrant_selection == "All":
-                FIGURE_WIDTH, FIGURE_HEIGHT = 800, 800
-                MARGIN = dict(l=20, r=20, t=20, b=20) # Increased right margin for legend
-
-                layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
-                cell_size = layout_data['cell_size']
-                gap_size_units = layout_data['gap_size_units']
-
-                if not display_df.empty:
-                    df = display_df.copy()
-                    panel_width_units = panel_cols * cell_size
-                    panel_height_units = panel_rows * cell_size
-                    plot_x_base = (df['UNIT_INDEX_Y'] % panel_cols) * cell_size
-                    plot_y_base = (df['UNIT_INDEX_X'] % panel_rows) * cell_size
-                    x_offset = np.where(df['UNIT_INDEX_Y'] >= panel_cols, panel_width_units + gap_size_units, 0)
-                    y_offset = np.where(df['UNIT_INDEX_X'] >= panel_rows, panel_height_units + gap_size_units, 0)
-                    jitter_x = df['jitter_x'] * cell_size
-                    jitter_y = df['jitter_y'] * cell_size
-                    df.loc[:, 'plot_x'] = plot_x_base + x_offset + jitter_x
-                    df.loc[:, 'plot_y'] = plot_y_base + y_offset + jitter_y
-                    defect_traces = create_defect_traces(df)
-                    for trace in defect_traces: fig.add_trace(trace)
-
-                tick_labels = list(range(2 * panel_cols))
-
-                fig.update_layout(
-                    title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-                    xaxis=dict(range=layout_data['x_axis_range'], tickvals=layout_data['x_tick_pos'], ticktext=tick_labels, showgrid=False, zeroline=False),
-                    yaxis=dict(range=layout_data['y_axis_range'], tickvals=layout_data['y_tick_pos'], ticktext=tick_labels, scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False),
-                    plot_bgcolor='#E58A60', paper_bgcolor=BACKGROUND_COLOR,
-                    width=FIGURE_WIDTH, height=FIGURE_HEIGHT, margin=MARGIN,
-                    shapes=layout_data['shapes'],
-                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
-                )
-
-                # --- Add Lot Number Annotation if provided ---
-                if lot_number:
-                    fig.add_annotation(
-                        x=layout_data['total_width'],
-                        y=layout_data['total_height'] + layout_data['gap_size_units'],
-                        text=f"<b>Lot: {lot_number}</b>",
-                        showarrow=False,
-                        xanchor="right",
-                        yanchor="top",
-                        font=dict(
-                            family="Arial, sans-serif",
-                            size=16,
-                            color=TEXT_COLOR
-                        ),
-                        align="right"
-                    )
-
-            else: # Single Quadrant View
-                plot_shapes = create_single_panel_grid(panel_rows, panel_cols)
-
-                if not display_df.empty:
-                    df = display_df.copy()
-                    df.loc[:, 'plot_x'] = (df['UNIT_INDEX_Y'] % panel_cols) + df['jitter_x']
-                    df.loc[:, 'plot_y'] = (df['UNIT_INDEX_X'] % panel_rows) + df['jitter_y']
-                    defect_traces = create_defect_traces(df)
-                    for trace in defect_traces: fig.add_trace(trace)
-
-                fig.update_layout(
-                    title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-                    xaxis=dict(range=[0, panel_cols-1 ], showgrid=False, zeroline=False, showticklabels=True),
-                    yaxis=dict(range=[0, panel_rows-1], showgrid=False, zeroline=False, showticklabels=True, scaleanchor="x", scaleratio=1),
-                    plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
-                    shapes=plot_shapes,
-                    height=800,
-                    margin=dict(l=20, r=20, t=20, b=20),
-                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
-                )
+            fig = create_defect_view_figure(
+                display_df, panel_rows, panel_cols, gap_size,
+                quadrant_selection, lot_number, TEXT_COLOR, BACKGROUND_COLOR
+            )
 
             # Center the plot on the page
             _, chart_col, _ = st.columns([1, 3, 1])
@@ -238,20 +188,35 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
 
         elif view_mode == "Pareto View":
+            st.write("Click on a bar in the Pareto chart to filter the entire dashboard by that defect type.")
             fig = go.Figure()
-            pareto_trace = create_pareto_trace(display_df)
+            # IMPORTANT: The pareto should be built from the quadrant-filtered data, but NOT the defect-filtered data
+            pareto_df = st.session_state.processed_df[
+                st.session_state.processed_df['QUADRANT'] == quadrant_selection
+            ] if quadrant_selection != "All" else st.session_state.processed_df
+
+            pareto_trace = create_pareto_trace(pareto_df)
             fig.add_trace(pareto_trace)
             
             fig.update_layout(
-                title=dict(text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR), x=0.5),
+                title=dict(text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(pareto_df)} Defects)", font=dict(color=TEXT_COLOR), x=0.5),
                 xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
                 yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
                 plot_bgcolor='black', 
-                paper_bgcolor= BACKGROUND_COLOR,
+                paper_bgcolor=BACKGROUND_COLOR,
                 showlegend=False,
                 height=600
             )
-            st.plotly_chart(fig, use_container_width=False)
+
+            # Use plotly_events to capture clicks
+            selected_points = plotly_events(fig, click_event=True, key="pareto_click")
+
+            if selected_points:
+                # Get the defect type from the clicked point's label (x-axis)
+                clicked_defect_type = selected_points[0]['x']
+                if st.session_state.selected_defect != clicked_defect_type:
+                    st.session_state.selected_defect = clicked_defect_type
+                    st.rerun()
 
         elif view_mode == "Summary View":
             st.header(f"Statistical Summary for Quadrant: {quadrant_selection}")

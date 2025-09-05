@@ -3,6 +3,7 @@
 
 import plotly.graph_objects as go
 import pandas as pd
+import numpy as np
 
 # Import the style configurations
 from src.config import PANEL_COLOR, GRID_COLOR, defect_style_map
@@ -159,7 +160,83 @@ def create_defect_traces(df):
                 hovertemplate="<b>Type: %{customdata[2]}</b><br>Location (X, Y): (%{customdata[0]}, %{customdata[1]})<extra></extra>"
             ))
     return traces
-    
+
+def create_defect_view_figure(display_df, panel_rows, panel_cols, gap_size, quadrant_selection, lot_number, TEXT_COLOR, BACKGROUND_COLOR):
+    """
+    Creates the main Defect View figure, handling both 'All' and single quadrant views.
+    """
+    fig = go.Figure()
+
+    if quadrant_selection == "All":
+        FIGURE_WIDTH, FIGURE_HEIGHT = 800, 800
+        MARGIN = dict(l=20, r=20, t=20, b=20)
+
+        layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
+        cell_size = layout_data['cell_size']
+        gap_size_units = layout_data['gap_size_units']
+
+        if not display_df.empty:
+            df = display_df.copy()
+            panel_width_units = panel_cols * cell_size
+            panel_height_units = panel_rows * cell_size
+            plot_x_base = (df['UNIT_INDEX_Y'] % panel_cols) * cell_size
+            plot_y_base = (df['UNIT_INDEX_X'] % panel_rows) * cell_size
+            x_offset = np.where(df['UNIT_INDEX_Y'] >= panel_cols, panel_width_units + gap_size_units, 0)
+            y_offset = np.where(df['UNIT_INDEX_X'] >= panel_rows, panel_height_units + gap_size_units, 0)
+            jitter_x = df['jitter_x'] * cell_size
+            jitter_y = df['jitter_y'] * cell_size
+            df.loc[:, 'plot_x'] = plot_x_base + x_offset + jitter_x
+            df.loc[:, 'plot_y'] = plot_y_base + y_offset + jitter_y
+            defect_traces = create_defect_traces(df)
+            for trace in defect_traces: fig.add_trace(trace)
+
+        tick_labels = list(range(2 * panel_cols))
+
+        fig.update_layout(
+            title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
+            xaxis=dict(range=layout_data['x_axis_range'], tickvals=layout_data['x_tick_pos'], ticktext=tick_labels, showgrid=False, zeroline=False),
+            yaxis=dict(range=layout_data['y_axis_range'], tickvals=layout_data['y_tick_pos'], ticktext=tick_labels, scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False),
+            plot_bgcolor='#E58A60', paper_bgcolor=BACKGROUND_COLOR,
+            width=FIGURE_WIDTH, height=FIGURE_HEIGHT, margin=MARGIN,
+            shapes=layout_data['shapes'],
+            legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
+        )
+
+        if lot_number:
+            fig.add_annotation(
+                x=layout_data['total_width'],
+                y=layout_data['total_height'] + layout_data['gap_size_units'],
+                text=f"<b>Lot: {lot_number}</b>",
+                showarrow=False,
+                xanchor="right",
+                yanchor="top",
+                font=dict(family="Arial, sans-serif", size=16, color=TEXT_COLOR),
+                align="right"
+            )
+
+    else: # Single Quadrant View
+        plot_shapes = create_single_panel_grid(panel_rows, panel_cols)
+
+        if not display_df.empty:
+            df = display_df.copy()
+            df.loc[:, 'plot_x'] = (df['UNIT_INDEX_Y'] % panel_cols) + df['jitter_x']
+            df.loc[:, 'plot_y'] = (df['UNIT_INDEX_X'] % panel_rows) + df['jitter_y']
+            defect_traces = create_defect_traces(df)
+            for trace in defect_traces: fig.add_trace(trace)
+
+        fig.update_layout(
+            title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
+            xaxis=dict(range=[0, panel_cols-1 ], showgrid=False, zeroline=False, showticklabels=True),
+            yaxis=dict(range=[0, panel_rows-1], showgrid=False, zeroline=False, showticklabels=True, scaleanchor="x", scaleratio=1),
+            plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
+            shapes=plot_shapes,
+            height=800,
+            margin=dict(l=20, r=20, t=20, b=20),
+            legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
+        )
+
+    return fig
+
 def create_pareto_trace(df):
     """Creates the Pareto bar chart trace for a single dataset."""
     if df.empty:
