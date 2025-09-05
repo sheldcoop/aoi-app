@@ -166,7 +166,7 @@ def main():
                     plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
                     width=FIGURE_WIDTH, height=FIGURE_HEIGHT, margin=MARGIN,
                     shapes=layout_data['shapes'],
-                    legend=dict(orientation="v", yanchor="bottom", y=1.02, xanchor="right", x=1, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
+                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
                 )
 
             else:
@@ -189,7 +189,7 @@ def main():
                 plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
                     shapes=plot_shapes,
                     height=800,
-                    legend=dict(orientation="", yanchor="bottom", y=1.02, xanchor="right", x=1, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
                 )
 
             st.plotly_chart(fig, use_container_width=False)
