@@ -12,7 +12,7 @@ TEXT_COLOR = 'black'       # White text for readability on the dark background.
 
 # --- UI Element Styling ---
 BUTTON_COLOR = '#4CAF50'        # A pleasant green
-BUTTON_HOVER_COLOR = '#45a049'  # A slightly darker green for hover
+BUTTON_HOVER_COLOR = 'red'      # A red for hover, as requested
 BUTTON_BORDER_COLOR = '#4A4A4A' # A dark grey for the border
 
 # --- Defect Styling (Unchanged) ---
