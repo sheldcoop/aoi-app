@@ -7,7 +7,7 @@
 PANEL_COLOR = '#F4A460'
 GRID_COLOR = 'black'
 BACKGROUND_COLOR ='#F4A460'
-PLOT_AREA_COLOR = '#F4A460'
+PLOT_AREA_COLOR = 'white'
 TEXT_COLOR = 'black'       # White text for readability on the dark background.
 
 # --- Defect Styling (Unchanged) ---
