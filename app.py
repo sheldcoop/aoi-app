@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 import pandas as pd
 
 # Import our modularized functions
+# Note: We will override the imported colors inside main() to match the Colab version.
 from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
 from src.data_handler import load_data
 from src.plotting import (
@@ -19,7 +20,7 @@ from src.plotting import (
 from src.reporting import generate_excel_report
 
 # ==============================================================================
-# --- STREAMLIT APP MAIN LOGIC (RESTRUCTURED AND FIXED) ---
+# --- STREAMLIT APP MAIN LOGIC (FINAL CORRECTED VERSION) ---
 # ==============================================================================
 
 def main():
@@ -28,55 +29,55 @@ def main():
     """
     # --- App Configuration ---
     st.set_page_config(layout="wide", page_title="Panel Defect Analysis")
+
+    # --- NEW: Hardcode correct colors to match Colab version ---
+    # This ensures the plot looks right without needing to change src/config.py
+    CORRECT_BACKGROUND_COLOR = '#F4A460'
+    CORRECT_PLOT_AREA_COLOR = '#8B4513'
+    CORRECT_GRID_COLOR = 'black'
+    CORRECT_TEXT_COLOR = 'black'
     
-    # --- Apply Custom CSS (Made more robust) ---
+    # --- Apply Custom CSS for a Professional UI ---
     st.markdown(f"""
         <style>
             /* Main app background */
-            .reportview-container {{
-                background-color: {BACKGROUND_COLOR};
+            .reportview-container, .main {{
+                background-color: {CORRECT_BACKGROUND_COLOR};
             }}
             /* Sidebar styling */
             .sidebar .sidebar-content {{
-                background-color: #2E2E2E;
-                border-right: 2px solid #4A4A4A;
+                background-color: #F0F2F6; /* A light grey for the sidebar */
+                border-right: 2px solid #DDDDDD;
             }}
-            h1 {{ text-align: center; padding-bottom: 20px; }}
-            body, h2, h3, .stRadio, .stSelectbox, .stNumberInput {{ color: {TEXT_COLOR}; }}
+            h1, h2, h3 {{ text-align: center; padding-bottom: 20px; color: {CORRECT_TEXT_COLOR}; }}
+            body, .stRadio, .stSelectbox, .stNumberInput, .stFileUploader, .stDownloadButton {{ color: {CORRECT_TEXT_COLOR}; }}
+            p, .stMarkdown {{ color: {CORRECT_TEXT_COLOR}; }}
         </style>
     """, unsafe_allow_html=True)
     
     st.title("Panel Defect Analysis Tool")
 
-    # --- Sidebar Control Panel (Render this first, always) ---
+    # --- Sidebar Control Panel ---
     with st.sidebar:
         st.header("Control Panel")
         st.divider()
-        
         st.subheader("Data Source")
         uploaded_file = st.file_uploader("Upload Your Defect Data (Excel)", type=["xlsx", "xls"])
-        
         st.divider()
-        
         st.subheader("Configuration")
         panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
         panel_cols = st.number_input("Panel Columns", min_value=2, max_value=50, value=7)
         gap_size = 1 
-
         st.divider()
-
         st.subheader("Analysis Controls")
         view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
         quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
     # --- Main Content Area ---
-
-    # --- NEW: Explicit check for file upload before proceeding ---
     if uploaded_file is None:
         st.info("Welcome! Please upload a defect data file using the control panel on the left to begin analysis.")
-        return # Stop execution here if no file is uploaded, but after UI is drawn.
+        return
 
-    # --- Load and filter data (only if a file exists) ---
     full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
     if full_df.empty:
         st.error("The uploaded file could not be processed or is empty. Please check the file format and content.")
@@ -84,7 +85,6 @@ def main():
 
     display_df = full_df[full_df['QUADRANT'] == quadrant_selection] if quadrant_selection != "All" else full_df
 
-    # --- Add Download Report Button (now that we have data) ---
     with st.sidebar:
         st.divider()
         st.subheader("Reporting")
@@ -96,7 +96,6 @@ def main():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-    # --- View-dependent content ---
     if view_mode == "Defect View":
         fig = go.Figure()
         defect_traces = create_defect_traces(display_df)
@@ -104,7 +103,6 @@ def main():
         
         total_panel_width = (2 * panel_cols) + gap_size
         total_panel_height = (2 * panel_rows) + gap_size
-        
         x_range_full, y_range_full = [-gap_size, total_panel_width], [-gap_size, total_panel_height]
         
         q1_x, q1_y = [0, panel_cols], [0, panel_rows]
@@ -118,16 +116,16 @@ def main():
             
             boundary_shape = go.layout.Shape(
                 type="rect", x0=-gap_size, y0=-gap_size, x1=total_panel_width, y1=total_panel_height,
-                fillcolor=PLOT_AREA_COLOR, line_width=0, layer='below'
+                fillcolor=CORRECT_PLOT_AREA_COLOR, line_width=0, layer='below'
             )
             plot_shapes.insert(0, boundary_shape)
             
             show_axes = True
-            plot_bg_color = BACKGROUND_COLOR
+            plot_bg_color = CORRECT_BACKGROUND_COLOR
         else:
             plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant=quadrant_selection)
             show_axes = False
-            plot_bg_color = BACKGROUND_COLOR
+            plot_bg_color = CORRECT_BACKGROUND_COLOR
             if quadrant_selection == "Q1": x_axis_range, y_axis_range = q1_x, q1_y
             elif quadrant_selection == "Q2": x_axis_range, y_axis_range = q2_x, q2_y
             elif quadrant_selection == "Q3": x_axis_range, y_axis_range = q3_x, q3_y
@@ -139,35 +137,32 @@ def main():
         y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
         
         fig.update_layout(
-            title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(title="Unit Column Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            yaxis=dict(title="Unit Row Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
+            title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=CORRECT_TEXT_COLOR)),
+            xaxis=dict(title="Unit Column Index" if show_axes else "", title_font=dict(color=CORRECT_TEXT_COLOR), tickfont=dict(color=CORRECT_TEXT_COLOR), range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=CORRECT_GRID_COLOR, mirror=True),
+            yaxis=dict(title="Unit Row Index" if show_axes else "", title_font=dict(color=CORRECT_TEXT_COLOR), tickfont=dict(color=CORRECT_TEXT_COLOR), range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=CORRECT_GRID_COLOR, mirror=True),
             plot_bgcolor=plot_bg_color, 
-            paper_bgcolor=BACKGROUND_COLOR,
+            paper_bgcolor=CORRECT_BACKGROUND_COLOR,
             shapes=plot_shapes,
-            legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top'), 
-            height=800
+            legend=dict(title_font=dict(color=CORRECT_TEXT_COLOR), font=dict(color=CORRECT_TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top')
+            # --- FIX: The `height=800` line has been removed to ensure a square aspect ratio ---
         )
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Pareto View":
-        # This block is unchanged
         fig = go.Figure()
         pareto_trace = create_pareto_trace(display_df)
         fig.add_trace(pareto_trace)
         fig.update_layout(
-            title=dict(text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-            yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-            plot_bgcolor=PLOT_AREA_COLOR, 
-            paper_bgcolor=BACKGROUND_COLOR,
-            showlegend=False, 
-            height=800
+            title=dict(text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=CORRECT_TEXT_COLOR)),
+            xaxis=dict(title="Defect Type", title_font=dict(color=CORRECT_TEXT_COLOR), tickfont=dict(color=CORRECT_TEXT_COLOR)),
+            yaxis=dict(title="Count", title_font=dict(color=CORRECT_TEXT_COLOR), tickfont=dict(color=CORRECT_TEXT_COLOR)),
+            plot_bgcolor=CORRECT_PLOT_AREA_COLOR, 
+            paper_bgcolor=CORRECT_BACKGROUND_COLOR,
+            showlegend=False
         )
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Summary View":
-        # This block is unchanged
         st.header(f"Statistical Summary for Quadrant: {quadrant_selection}")
         if display_df.empty:
             st.info("No defects to summarize in the selected quadrant.")
@@ -208,12 +203,11 @@ def main():
             for trace in grouped_traces: fig.add_trace(trace)
             fig.update_layout(
                 barmode='group',
-                xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-                yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-                plot_bgcolor=PLOT_AREA_COLOR, 
-                paper_bgcolor=BACKGROUND_COLOR,
-                legend=dict(font=dict(color=TEXT_COLOR)), 
-                height=600
+                xaxis=dict(title="Defect Type", title_font=dict(color=CORRECT_TEXT_COLOR), tickfont=dict(color=CORRECT_TEXT_COLOR)),
+                yaxis=dict(title="Count", title_font=dict(color=CORRECT_TEXT_COLOR), tickfont=dict(color=CORRECT_TEXT_COLOR)),
+                plot_bgcolor=CORRECT_PLOT_AREA_COLOR, 
+                paper_bgcolor=CORRECT_BACKGROUND_COLOR,
+                legend=dict(font=dict(color=CORRECT_TEXT_COLOR))
             )
             st.plotly_chart(fig, use_container_width=True)
 
