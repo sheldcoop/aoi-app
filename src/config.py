@@ -5,10 +5,10 @@
 # This palette is designed to look like a copper-clad panel from the PCB/IC Substrate industry.
 
 PANEL_COLOR = '#8B4513'
-GRID_COLOR = '#FFFFFF'
+GRID_COLOR = '#black'
 BACKGROUND_COLOR = 'white'
 PLOT_AREA_COLOR = '#F4A460'
-TEXT_COLOR = '#FFFFFF'       # White text for readability on the dark background.
+TEXT_COLOR = 'black'       # White text for readability on the dark background.
 
 # --- Defect Styling (Unchanged) ---
 defect_style_map = {
