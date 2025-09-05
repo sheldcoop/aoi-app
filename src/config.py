@@ -4,7 +4,7 @@
 # --- Style Theme: Post-Etch AOI Panel ---
 # This palette is designed to look like a copper-clad panel from the PCB/IC Substrate industry.
 
-PANEL_COLOR = '#F4A460'
+PANEL_COLOR = '#E58A60'
 GRID_COLOR = 'black'
 BACKGROUND_COLOR ='white'
 PLOT_AREA_COLOR = '#F4A460'
