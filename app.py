@@ -202,7 +202,7 @@ if run_analysis:
 
         if display_df.empty:
             st.info("No defects to summarize in the selected quadrant.")
-            return
+            st.stop()
 
         if quadrant_selection != "All":
             total_defects = len(display_df)
