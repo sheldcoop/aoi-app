@@ -1,4 +1,26 @@
-# Replace your existing main() function with this one
+# app.py
+
+"""
+Main application file for the Defect Analysis Streamlit Dashboard.
+This script acts as the main entry point and orchestrates the UI and logic.
+"""
+
+import streamlit as st
+import plotly.graph_objects as go
+import pandas as pd
+
+# Import our modularized functions
+from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
+from src.data_handler import load_data
+from src.plotting import (
+    create_grid_shapes, create_defect_traces,
+    create_pareto_trace, create_grouped_pareto_trace
+)
+from src.reporting import generate_excel_report
+
+# ==============================================================================
+# --- STREAMLIT APP MAIN LOGIC (RESTRUCTURED AND FIXED) ---
+# ==============================================================================
 
 def main():
     """
@@ -7,7 +29,7 @@ def main():
     # --- App Configuration ---
     st.set_page_config(layout="wide", page_title="Panel Defect Analysis")
     
-    # --- Apply Custom CSS for a Professional UI ---
+    # --- Apply Custom CSS (Made more robust) ---
     st.markdown(f"""
         <style>
             /* Main app background */
@@ -16,32 +38,17 @@ def main():
             }}
             /* Sidebar styling */
             .sidebar .sidebar-content {{
-                background-color: #2E2E2E; /* Darker grey for control panel feel */
+                background-color: #2E2E2E;
                 border-right: 2px solid #4A4A4A;
             }}
-            /* Center the main title */
-            h1 {{
-                text-align: center;
-                padding-bottom: 20px;
-            }}
-            /* General text color */
-            body, h2, h3, .stRadio, .stSelectbox, .stNumberInput {{
-                color: {TEXT_COLOR};
-            }}
-            /* Style the KPI metric labels and values */
-            .st-emotion-cache-1g8w9s4 p {{ /* Metric Label */
-                color: {TEXT_COLOR};
-                font-size: 16px;
-            }}
-             .st-emotion-cache-fplge9 div {{ /* Metric Value */
-                font-size: 28px;
-            }}
+            h1 {{ text-align: center; padding-bottom: 20px; }}
+            body, h2, h3, .stRadio, .stSelectbox, .stNumberInput {{ color: {TEXT_COLOR}; }}
         </style>
     """, unsafe_allow_html=True)
     
     st.title("Panel Defect Analysis Tool")
 
-    # --- Sidebar Control Panel ---
+    # --- Sidebar Control Panel (Render this first, always) ---
     with st.sidebar:
         st.header("Control Panel")
         st.divider()
@@ -62,21 +69,26 @@ def main():
         view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
         quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
 
-    # --- Load and filter data ---
+    # --- Main Content Area ---
+
+    # --- NEW: Explicit check for file upload before proceeding ---
+    if uploaded_file is None:
+        st.info("Welcome! Please upload a defect data file using the control panel on the left to begin analysis.")
+        return # Stop execution here if no file is uploaded, but after UI is drawn.
+
+    # --- Load and filter data (only if a file exists) ---
     full_df = load_data(uploaded_file, panel_rows, panel_cols, gap_size)
     if full_df.empty:
-        st.warning("No data to display. Please upload a valid Excel file.")
+        st.error("The uploaded file could not be processed or is empty. Please check the file format and content.")
         return
 
     display_df = full_df[full_df['QUADRANT'] == quadrant_selection] if quadrant_selection != "All" else full_df
 
-    # --- Add Download Report Button to Sidebar ---
+    # --- Add Download Report Button (now that we have data) ---
     with st.sidebar:
         st.divider()
         st.subheader("Reporting")
-        
         excel_report_bytes = generate_excel_report(full_df, panel_rows, panel_cols)
-        
         st.download_button(
             label="Download Full Report",
             data=excel_report_bytes,
@@ -84,44 +96,34 @@ def main():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-    # --- Main content area ---
+    # --- View-dependent content ---
     if view_mode == "Defect View":
         fig = go.Figure()
         defect_traces = create_defect_traces(display_df)
         for trace in defect_traces: fig.add_trace(trace)
         
-        # --- MODIFIED --- Calculate total width/height of panels for boundary
         total_panel_width = (2 * panel_cols) + gap_size
         total_panel_height = (2 * panel_rows) + gap_size
         
-        # --- MODIFIED --- Update ranges to include the new boundary
         x_range_full, y_range_full = [-gap_size, total_panel_width], [-gap_size, total_panel_height]
         
         q1_x, q1_y = [0, panel_cols], [0, panel_rows]
-        q2_x, q2_y = [panel_cols + gap_size, total_panel_width - gap_size], [0, panel_rows] # Corrected Q2 range
-        q3_x, q3_y = [0, panel_cols], [panel_rows + gap_size, total_panel_height - gap_size] # Corrected Q3 range
-        q4_x, q4_y = [panel_cols + gap_size, total_panel_width - gap_size], [panel_rows + gap_size, total_panel_height - gap_size] # Corrected Q4 range
+        q2_x, q2_y = [panel_cols + gap_size, total_panel_width], [0, panel_rows]
+        q3_x, q3_y = [0, panel_cols], [panel_rows + gap_size, total_panel_height]
+        q4_x, q4_y = [panel_cols + gap_size, total_panel_width], [panel_rows + gap_size, total_panel_height]
         
         if quadrant_selection == "All":
             x_axis_range, y_axis_range = x_range_full, y_range_full
             plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All')
             
-            # --- NEW --- Inject the solid boundary shape at the beginning of the list
-            # This ensures it's drawn behind everything else.
             boundary_shape = go.layout.Shape(
-                type="rect",
-                x0=-gap_size,
-                y0=-gap_size,
-                x1=total_panel_width,
-                y1=total_panel_height,
-                fillcolor=PLOT_AREA_COLOR, # Use your existing plot area color for the boundary
-                line_width=0,
-                layer='below'
+                type="rect", x0=-gap_size, y0=-gap_size, x1=total_panel_width, y1=total_panel_height,
+                fillcolor=PLOT_AREA_COLOR, line_width=0, layer='below'
             )
             plot_shapes.insert(0, boundary_shape)
             
             show_axes = True
-            plot_bg_color = BACKGROUND_COLOR # The plot background will be the 'gap' color
+            plot_bg_color = BACKGROUND_COLOR
         else:
             plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant=quadrant_selection)
             show_axes = False
@@ -148,26 +150,25 @@ def main():
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    # ... The rest of your elif statements for "Pareto View" and "Summary View" remain unchanged ...
     elif view_mode == "Pareto View":
+        # This block is unchanged
         fig = go.Figure()
         pareto_trace = create_pareto_trace(display_df)
         fig.add_trace(pareto_trace)
-        
         fig.update_layout(
             title=dict(text=f"Pareto Analysis - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
             xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
             yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
             plot_bgcolor=PLOT_AREA_COLOR, 
-            paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
+            paper_bgcolor=BACKGROUND_COLOR,
             showlegend=False, 
             height=800
         )
         st.plotly_chart(fig, use_container_width=True)
 
     elif view_mode == "Summary View":
+        # This block is unchanged
         st.header(f"Statistical Summary for Quadrant: {quadrant_selection}")
-
         if display_df.empty:
             st.info("No defects to summarize in the selected quadrant.")
             return
@@ -178,23 +179,19 @@ def main():
             defective_cells = len(display_df[['UNIT_INDEX_X', 'UNIT_INDEX_Y']].drop_duplicates())
             defect_density = total_defects / total_cells if total_cells > 0 else 0
             yield_estimate = (total_cells - defective_cells) / total_cells if total_cells > 0 else 0
-
             st.markdown("### Key Performance Indicators (KPIs)")
             col1, col2, col3 = st.columns(3)
             col1.metric("Total Defect Count", f"{total_defects:,}")
             col2.metric("Defect Density", f"{defect_density:.2f} defects/cell")
             col3.metric("Yield Estimate", f"{yield_estimate:.2%}")
-
             st.divider()
             st.markdown("### Top Defect Types")
             top_offenders = display_df['DEFECT_TYPE'].value_counts().reset_index()
             top_offenders.columns = ['Defect Type', 'Count']
             top_offenders['Percentage'] = (top_offenders['Count'] / total_defects) * 100
             st.dataframe(top_offenders.style.format({'Percentage': '{:.2f}%'}).background_gradient(cmap='Reds', subset=['Count']), use_container_width=True)
-        
-        else: # "All" is selected, show the Quarterly Breakdown
+        else:
             st.markdown("### Quarterly KPI Breakdown")
-            
             kpi_data = []
             quadrants = ['Q1', 'Q2', 'Q3', 'Q4']
             for quad in quadrants:
@@ -202,23 +199,24 @@ def main():
                 total_defects = len(quad_df)
                 density = total_defects / (panel_rows * panel_cols) if (panel_rows * panel_cols) > 0 else 0
                 kpi_data.append({"Quadrant": quad, "Total Defects": total_defects, "Defect Density": f"{density:.2f}"})
-            
             kpi_df = pd.DataFrame(kpi_data)
             st.dataframe(kpi_df, use_container_width=True)
-            
             st.divider()
             st.markdown("### Defect Distribution by Quadrant")
             fig = go.Figure()
             grouped_traces = create_grouped_pareto_trace(full_df)
             for trace in grouped_traces: fig.add_trace(trace)
-            
             fig.update_layout(
                 barmode='group',
                 xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
                 yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
                 plot_bgcolor=PLOT_AREA_COLOR, 
-                paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
+                paper_bgcolor=BACKGROUND_COLOR,
                 legend=dict(font=dict(color=TEXT_COLOR)), 
                 height=600
             )
             st.plotly_chart(fig, use_container_width=True)
+
+
+if __name__ == '__main__':
+    main()
