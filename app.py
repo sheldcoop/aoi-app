@@ -8,12 +8,13 @@ This script acts as the main entry point and orchestrates the UI and logic.
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
+import numpy as np
 
 # Import our modularized functions
 from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
 from src.data_handler import load_data
 from src.plotting import (
-    create_grid_shapes, create_defect_traces, 
+    create_dynamic_grid, create_defect_traces,
     create_pareto_trace, create_grouped_pareto_trace
 )
 from src.reporting import generate_excel_report
@@ -108,46 +109,70 @@ def main():
 
     # --- Main content area ---
     if view_mode == "Defect View":
+        # --- Dynamic Sizing Configuration ---
+        FIGURE_WIDTH = 800
+        FIGURE_HEIGHT = 800
+        MARGIN = dict(l=40, r=40, t=40, b=40)
+
+        # --- Create Grid and get layout data ---
+        # Note: We are not filtering by quadrant here, the grid is always 2x2
+        layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
+        cell_size = layout_data['cell_size']
+        gap_size_units = layout_data['gap_size_units']
+
+        # --- Coordinate Transformation for Defects ---
+        # This is now done here, where we have access to the dynamic cell_size
+        if not display_df.empty:
+            # Create a copy to avoid SettingWithCopyWarning
+            display_df = display_df.copy()
+
+            panel_width_units = panel_cols * cell_size
+            panel_height_units = panel_rows * cell_size
+
+            plot_x_base = (display_df['UNIT_INDEX_Y'] % panel_cols) * cell_size
+            plot_y_base = (display_df['UNIT_INDEX_X'] % panel_rows) * cell_size
+
+            x_offset = np.where(display_df['UNIT_INDEX_Y'] >= panel_cols, panel_width_units + gap_size_units, 0)
+            y_offset = np.where(display_df['UNIT_INDEX_X'] >= panel_rows, panel_height_units + gap_size_units, 0)
+
+            # Add jitter scaled by cell size to avoid perfect grid alignment
+            jitter_x = (np.random.rand(len(display_df)) * 0.8 + 0.1) * cell_size
+            jitter_y = (np.random.rand(len(display_df)) * 0.8 + 0.1) * cell_size
+
+            # Create the final plot coordinates
+            display_df.loc[:, 'plot_x'] = plot_x_base + x_offset + jitter_x
+            display_df.loc[:, 'plot_y'] = plot_y_base + y_offset + jitter_y
+
+        # --- Create Figure ---
         fig = go.Figure()
         defect_traces = create_defect_traces(display_df)
         for trace in defect_traces: fig.add_trace(trace)
         
-        total_rows, total_cols = 2 * panel_rows, 2 * panel_cols
-        total_width, total_height = 2 * panel_cols + gap_size, 2 * panel_rows + gap_size
+        total_cols = 2 * panel_cols
+        tick_labels = list(range(total_cols))
 
-        q1_x, q1_y = [0, panel_cols], [0, panel_rows]
-        q2_x, q2_y = [panel_cols + gap_size, total_width], [0, panel_rows]
-        q3_x, q3_y = [0, panel_cols], [panel_rows + gap_size, total_height]
-        q4_x, q4_y = [panel_cols + gap_size, total_width], [panel_rows + gap_size, total_height]
-        
-        if quadrant_selection == "All":
-            padding = 2 # Increase this value to add more padding around the grid
-            x_axis_range = [-padding, total_width + padding]
-            y_axis_range = [-padding, total_height + padding]
-            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant='All')
-            show_axes = True
-            plot_bg_color = PLOT_AREA_COLOR
-        else:
-            plot_shapes = create_grid_shapes(panel_rows, panel_cols, gap_size, quadrant=quadrant_selection)
-            show_axes = False
-            plot_bg_color = BACKGROUND_COLOR
-            if quadrant_selection == "Q1": x_axis_range, y_axis_range = q1_x, q1_y
-            elif quadrant_selection == "Q2": x_axis_range, y_axis_range = q2_x, q2_y
-            elif quadrant_selection == "Q3": x_axis_range, y_axis_range = q3_x, q3_y
-            else: x_axis_range, y_axis_range = q4_x, q4_y
-
-        x_tick_pos = [i + 0.5 for i in range(panel_cols)] + [i + 0.5 + panel_cols + gap_size for i in range(panel_cols)]
-        y_tick_pos = [i + 0.5 for i in range(panel_rows)] + [i + 0.5 + panel_rows + gap_size for i in range(panel_rows)]
-        
         fig.update_layout(
             title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(title="Unit Column Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=x_axis_range, tickvals=x_tick_pos if show_axes else [], ticktext=list(range(total_cols)) if show_axes else [], showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            yaxis=dict(title="Unit Row Index" if show_axes else "", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR), range=y_axis_range, tickvals=y_tick_pos if show_axes else [], ticktext=list(range(total_rows)) if show_axes else [], scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, showline=show_axes, linewidth=3, linecolor=GRID_COLOR, mirror=True),
-            plot_bgcolor=plot_bg_color, 
-            paper_bgcolor=BACKGROUND_COLOR, # THEME FIX
-            shapes=plot_shapes,
-            legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top'), 
-            height=800
+            xaxis=dict(
+                range=layout_data['x_axis_range'],
+                tickvals=layout_data['x_tick_pos'],
+                ticktext=tick_labels,
+                showgrid=False, zeroline=False
+            ),
+            yaxis=dict(
+                range=layout_data['y_axis_range'],
+                tickvals=layout_data['y_tick_pos'],
+                ticktext=tick_labels,
+                scaleanchor="x", scaleratio=1,
+                showgrid=False, zeroline=False
+            ),
+            plot_bgcolor=BACKGROUND_COLOR,
+            paper_bgcolor=BACKGROUND_COLOR,
+            width=FIGURE_WIDTH,
+            height=FIGURE_HEIGHT,
+            margin=MARGIN,
+            shapes=layout_data['shapes'],
+            legend=dict(title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR), x=1.02, y=1, xanchor='left', yanchor='top')
         )
         st.plotly_chart(fig, use_container_width=True)
 

@@ -67,13 +67,5 @@ def load_data(uploaded_file, panel_rows, panel_cols, gap_size):
     choices = ['Q1', 'Q2', 'Q3', 'Q4']
     df['QUADRANT'] = np.select(conditions, choices, default='Other')
     
-    # Coordinate Transformation
-    plot_x_base = df['UNIT_INDEX_Y'] % panel_cols
-    plot_y_base = df['UNIT_INDEX_X'] % panel_rows
-    x_offset = np.where(df['UNIT_INDEX_Y'] >= panel_cols, panel_cols + gap_size, 0)
-    y_offset = np.where(df['UNIT_INDEX_X'] >= panel_rows, panel_rows + gap_size, 0)
-    df['plot_x'] = plot_x_base + x_offset + np.random.rand(len(df)) * 0.8 + 0.1
-    df['plot_y'] = plot_y_base + y_offset + np.random.rand(len(df)) * 0.8 + 0.1
-    
     return df
 
