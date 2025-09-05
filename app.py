@@ -192,7 +192,7 @@ def main():
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
                 )
 
-        st.plotly_chart(fig, use_container_width=False)
+            st.plotly_chart(fig, use_container_width=False)
 
         elif view_mode == "Pareto View":
             fig = go.Figure()
