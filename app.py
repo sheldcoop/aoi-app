@@ -5,9 +5,10 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 
-# Import our modularized functions
+# --- NOTE: Ensure these modularized functions exist in your src/ folder ---
+# It's assumed these functions work as they did in your original code.
 from src.config import BACKGROUND_COLOR, PLOT_AREA_COLOR, GRID_COLOR, TEXT_COLOR
-from src.data_handler import load_data # CHANGE 5: Add @st.cache_data to this function in its file!
+from src.data_handler import load_data
 from src.plotting import (
     create_dynamic_grid, create_single_panel_grid, create_defect_traces,
     create_pareto_trace, create_grouped_pareto_trace
@@ -22,92 +23,133 @@ def main():
     """
     Main function to run the Streamlit application.
     """
+    # --- App Configuration ---
     st.set_page_config(layout="wide", page_title="Panel Defect Analysis")
     
     # --- STATE MANAGEMENT INITIALIZATION ---
-    if 'analysis_run' not in st.session_state:
-        st.session_state.analysis_run = False
-    # CHANGE 3: Add state for stable jitter
+    # Simplified state to store the processed dataframe with stable jitter
     if 'processed_df' not in st.session_state:
         st.session_state.processed_df = pd.DataFrame()
 
     def reset_analysis_state():
-        st.session_state.analysis_run = False
+        # This function is called when new files are uploaded to clear old data
         st.session_state.processed_df = pd.DataFrame()
-        load_data.clear()
+        load_data.clear() # Assumes load_data uses @st.cache_data
 
-    # (Your CSS remains the same, so it's omitted for brevity)
-    st.markdown(...) 
+    # --- Apply Custom CSS for a Professional UI (Your Dark Theme) ---
+    st.markdown(f"""
+        <style>
+            .reportview-container {{
+                background-color: {BACKGROUND_COLOR};
+                color: {TEXT_COLOR};
+            }}
+            .sidebar .sidebar-content {{
+                background-color: #2E2E2E;
+            }}
+            h1, h2, h3 {{
+                text-align: center;
+                color: {TEXT_COLOR};
+            }}
+        </style>
+    """, unsafe_allow_html=True)
     
     st.title("Panel Defect Analysis Tool")
 
-    # (Your Sidebar remains the same, so it's omitted for brevity)
+    # --- Sidebar Control Panel ---
     with st.sidebar:
-        ...
+        st.header("Control Panel")
+        st.divider()
+        
+        st.subheader("Data Source")
+        uploaded_files = st.file_uploader(
+            "Upload Your Defect Data (Excel)",
+            type=["xlsx", "xls"],
+            accept_multiple_files=True,
+            on_change=reset_analysis_state
+        )
+        
+        st.divider()
+        
+        st.subheader("Configuration")
+        panel_rows = st.number_input("Panel Rows", min_value=2, max_value=50, value=7)
+        panel_cols = st.number_input("Panel Columns", min_value=2, max_value=50, value=7)
+        gap_size = 1 
 
-    # --- Main Application Logic ---
-    if st.session_state.analysis_run:
+        st.divider()
+
+        st.subheader("Analysis Controls")
+        view_mode = st.radio("Select View", ["Defect View", "Pareto View", "Summary View"])
+        quadrant_selection = st.selectbox("Select Quadrant", ["All", "Q1", "Q2", "Q3", "Q4"])
+
+    # --- Main Application Logic: Simplified Workflow ---
+    if uploaded_files:
         full_df = load_data(uploaded_files, panel_rows, panel_cols, gap_size)
 
         if full_df.empty:
-            st.warning("No data to display. Please upload valid Excel file(s) and click 'Run Analysis'.")
+            st.warning("No data to display. Please check the uploaded Excel file(s).")
             st.stop()
             
-        # CHANGE 3: Calculate jitter ONCE and store in session state
-        if st.session_state.processed_df.empty or not st.session_state.processed_df.equals(full_df):
+        # FIX: Calculate stable jitter only once when new data is loaded
+        if 'jitter_x' not in full_df.columns:
             full_df['jitter_x'] = np.random.rand(len(full_df)) * 0.8 + 0.1
             full_df['jitter_y'] = np.random.rand(len(full_df)) * 0.8 + 0.1
-            st.session_state.processed_df = full_df.copy()
+        
+        st.session_state.processed_df = full_df
 
         display_df = st.session_state.processed_df[
             st.session_state.processed_df['QUADRANT'] == quadrant_selection
         ] if quadrant_selection != "All" else st.session_state.processed_df.copy()
 
-        # (Your Download Button logic remains the same)
+        # Add Download Report Button to Sidebar (only appears after data is loaded)
         with st.sidebar:
-            ...
+            st.divider()
+            st.subheader("Reporting")
+            excel_report_bytes = generate_excel_report(full_df, panel_rows, panel_cols)
+            st.download_button(
+                label="Download Full Report",
+                data=excel_report_bytes,
+                file_name="full_defect_report.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
-        # --- Main content area ---
+        # --- Main content area based on view selection ---
         if view_mode == "Defect View":
-            
-            # CHANGE 7: Define a base layout to keep code DRY
             base_layout = dict(
                 plot_bgcolor=BACKGROUND_COLOR, 
                 paper_bgcolor=BACKGROUND_COLOR,
-                height=900, # CHANGE 9: Standardize height
+                height=900,
                 title_font=dict(color=TEXT_COLOR),
-                title_x=0.5, # CHANGE 4: Center the title
-                margin=dict(l=40, r=40, t=80, b=40), # CHANGE 6: Add more breathing room
-                # CHANGE 2: Move legend to the right
+                title_x=0.5, # Center the title
+                margin=dict(l=40, r=40, t=80, b=40),
+                # IMPROVEMENT: Legend moved to the right
                 legend=dict(
                     orientation="v", 
-                    yanchor="top", 
-                    y=1, 
-                    xanchor="left", 
-                    x=1.02,
-                    title_font=dict(color=TEXT_COLOR), 
-                    font=dict(color=TEXT_COLOR)
+                    yanchor="top", y=1, 
+                    xanchor="left", x=1.02,
+                    title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR)
                 )
             )
 
             fig = go.Figure()
 
             if quadrant_selection == "All":
+                # Your original, working logic for the 2x2 grid
                 FIGURE_WIDTH, FIGURE_HEIGHT = 900, 900
                 MARGIN = dict(l=20, r=20, t=50, b=20)
                 layout_data = create_dynamic_grid(panel_rows, panel_cols, gap_size, FIGURE_WIDTH, FIGURE_HEIGHT, MARGIN)
                 cell_size = layout_data['cell_size']
-                
-                # Use jitter from session state
-                display_df['plot_x'] = ((display_df['UNIT_INDEX_Y'] % panel_cols) + display_df['jitter_x']) * cell_size
-                display_df['plot_y'] = ((display_df['UNIT_INDEX_X'] % panel_rows) + display_df['jitter_y']) * cell_size
-                
+                gap_size_units = layout_data['gap_size_units']
+
                 panel_width_units = panel_cols * cell_size
                 panel_height_units = panel_rows * cell_size
-                x_offset = np.where(display_df['UNIT_INDEX_Y'] >= panel_cols, panel_width_units + layout_data['gap_size_units'], 0)
-                y_offset = np.where(display_df['UNIT_INDEX_X'] >= panel_rows, panel_height_units + layout_data['gap_size_units'], 0)
-                display_df['plot_x'] += x_offset
-                display_df['plot_y'] += y_offset
+                plot_x_base = (display_df['UNIT_INDEX_Y'] % panel_cols) * cell_size
+                plot_y_base = (display_df['UNIT_INDEX_X'] % panel_rows) * cell_size
+                x_offset = np.where(display_df['UNIT_INDEX_Y'] >= panel_cols, panel_width_units + gap_size_units, 0)
+                y_offset = np.where(display_df['UNIT_INDEX_X'] >= panel_rows, panel_height_units + gap_size_units, 0)
+                
+                # Use stable jitter
+                display_df.loc[:, 'plot_x'] = plot_x_base + x_offset + (display_df['jitter_x'] * cell_size)
+                display_df.loc[:, 'plot_y'] = plot_y_base + y_offset + (display_df['jitter_y'] * cell_size)
 
                 defect_traces = create_defect_traces(display_df)
                 for trace in defect_traces: fig.add_trace(trace)
@@ -119,14 +161,14 @@ def main():
                     yaxis=dict(range=layout_data['y_axis_range'], tickvals=layout_data['y_tick_pos'], ticktext=list(range(2*panel_rows)), scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False),
                     shapes=layout_data['shapes']
                 )
-
-            else: # Single Quadrant View
+            else:
+                # Your original, working logic for a single quadrant
                 plot_shapes = create_single_panel_grid(panel_rows, panel_cols)
-
-                # Use jitter from session state
-                display_df['plot_x'] = (display_df['UNIT_INDEX_Y'] % panel_cols) + display_df['jitter_x']
-                display_df['plot_y'] = (display_df['UNIT_INDEX_X'] % panel_rows) + display_df['jitter_y']
-
+                
+                # Use stable jitter
+                display_df.loc[:, 'plot_x'] = (display_df['UNIT_INDEX_Y'] % panel_cols) + display_df['jitter_x']
+                display_df.loc[:, 'plot_y'] = (display_df['UNIT_INDEX_X'] % panel_rows) + display_df['jitter_y']
+                
                 defect_traces = create_defect_traces(display_df)
                 for trace in defect_traces: fig.add_trace(trace)
 
@@ -138,49 +180,50 @@ def main():
                     shapes=plot_shapes
                 )
 
-            # CHANGE 1: Center the plot using columns
-            _, chart_col, _ = st.columns([1, 4, 1]) # Use a ratio to control centering width
+            # IMPROVEMENT: Center the plot on the page
+            _, chart_col, _ = st.columns([1, 4, 1])
             with chart_col:
                 st.plotly_chart(fig, use_container_width=True)
 
         elif view_mode == "Pareto View":
-            # CHANGE 8: Use columns for a better Pareto layout
+            # IMPROVEMENT: Better layout for Pareto view
             chart_col, summary_col = st.columns([2, 1])
-
             with chart_col:
                 fig = go.Figure()
-                pareto_trace = create_pareto_trace(display_df) # CHANGE 10: Sort data inside this function
+                pareto_trace = create_pareto_trace(display_df)
                 fig.add_trace(pareto_trace)
-                
                 fig.update_layout(
                     title=dict(text=f"Pareto Analysis - Quadrant: {quadrant_selection}", font=dict(color=TEXT_COLOR), x=0.5),
                     xaxis=dict(title="Defect Type", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
                     yaxis=dict(title="Count", title_font=dict(color=TEXT_COLOR), tickfont=dict(color=TEXT_COLOR)),
-                    plot_bgcolor=PLOT_AREA_COLOR, 
-                    paper_bgcolor=BACKGROUND_COLOR,
-                    showlegend=False,
-                    height=700
+                    plot_bgcolor=PLOT_AREA_COLOR, paper_bgcolor=BACKGROUND_COLOR,
+                    showlegend=False, height=700
                 )
                 st.plotly_chart(fig, use_container_width=True)
-
             with summary_col:
                 st.markdown("### Defect Summary")
-                st.markdown(f"**Total Defects in View:** {len(display_df)}")
+                st.markdown(f"**Total Defects:** {len(display_df)}")
                 summary_table = display_df['DEFECT_TYPE'].value_counts().reset_index()
                 summary_table.columns = ['Defect Type', 'Count']
                 st.dataframe(summary_table, use_container_width=True, height=600)
-                
-        # (Your Summary View logic remains the same)
-        elif view_mode == "Summary View":
-            ...
 
+        elif view_mode == "Summary View":
+            # Your original, working summary view logic
+            st.header(f"Statistical Summary for Quadrant: {quadrant_selection}")
+            # (Paste your full summary view logic here)
+            if not display_df.empty:
+                 if quadrant_selection != "All":
+                    # ... your single quadrant summary logic ...
+                    pass
+                 else:
+                    # ... your "All" quadrant summary logic ...
+                    pass
+            else:
+                st.info("No defects to summarize in the selected quadrant.")
     else:
-        # CHANGE 10: Better initial welcome message
-        _, col, _ = st.columns(3)
-        with col:
-            st.image("https://www.streamlit.io/images/brand/streamlit-logo-secondary-colormark-darktext.svg", width=300)
-            st.info("### Welcome to the Panel Defect Analysis Tool!")
-            st.write("Please upload your Excel file(s) and click **'Run Analysis'** in the sidebar to begin.")
+        # This welcome screen now only appears when no files are uploaded.
+        st.info("### Welcome to the Panel Defect Analysis Tool!")
+        st.write("Please upload your Excel file(s) in the sidebar to begin the analysis.")
 
 if __name__ == '__main__':
     main()
