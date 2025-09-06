@@ -93,12 +93,26 @@ def render_defect_view(display_df, quadrant_selection, panel_rows, panel_cols):
 
         fig.update_layout(
             title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
-            xaxis=dict(range=[0, panel_cols-1 ], showgrid=False, zeroline=False, showticklabels=True),
-            yaxis=dict(range=[0, panel_rows-1], showgrid=False, zeroline=False, showticklabels=True, scaleanchor="x", scaleratio=1),
-            plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR,
+            xaxis=dict(
+                range=[-0.5, panel_cols - 0.5],
+                tickvals=list(range(panel_cols)),
+                ticktext=list(range(panel_cols)),
+                showgrid=False,
+                zeroline=False
+            ),
+            yaxis=dict(
+                range=[-0.5, panel_rows - 0.5],
+                tickvals=list(range(panel_rows)),
+                ticktext=list(range(panel_rows)),
+                scaleanchor="x",
+                scaleratio=1,
+                showgrid=False,
+                zeroline=False
+            ),
+            plot_bgcolor=PANEL_COLOR,
+            paper_bgcolor=BACKGROUND_COLOR,
             shapes=plot_shapes,
-            height=800,
-            margin=dict(l=20, r=20, t=20, b=20),
+            margin=dict(l=40, r=40, t=40, b=40),
             legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, title_font=dict(color=TEXT_COLOR), font=dict(color=TEXT_COLOR))
         )
 

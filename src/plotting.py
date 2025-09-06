@@ -99,31 +99,31 @@ def create_dynamic_grid(panel_rows, panel_cols, gap_size_relative=0.1):
 
 def create_single_panel_grid(panel_rows, panel_cols):
     """
-    Generates the shapes for a single panel grid, used for the zoomed-in quadrant view.
+    Generates the shapes for a single panel grid, centered on integer coordinates.
     """
     shapes = []
     # Panel background and main border
     shapes.append(go.layout.Shape(
         type="rect",
-        x0=0, y0=0,
-        x1=panel_cols, y1=panel_rows,
-        line=dict(color=GRID_COLOR, width=3),
+        x0=-0.5, y0=-0.5,
+        x1=panel_cols - 0.5, y1=panel_rows - 0.5,
+        line=dict(color=GRID_COLOR, width=2),
         fillcolor=PANEL_COLOR,
         layer='below'
     ))
     # Inner grid lines (vertical)
     for i in range(1, panel_cols):
         shapes.append(go.layout.Shape(
-            type="line", x0=i, y0=0, x1=i, y1=panel_rows,
-            line=dict(color=GRID_COLOR, width=0.5, dash='dot'),
-            opacity=0.5, layer='below'
+            type="line", x0=i - 0.5, y0=-0.5, x1=i - 0.5, y1=panel_rows - 0.5,
+            line=dict(color=GRID_COLOR, width=0.5),
+            layer='below'
         ))
     # Inner grid lines (horizontal)
     for i in range(1, panel_rows):
         shapes.append(go.layout.Shape(
-            type="line", x0=0, y0=i, x1=panel_cols, y1=i,
-            line=dict(color=GRID_COLOR, width=0.5, dash='dot'),
-            opacity=0.5, layer='below'
+            type="line", x0=-0.5, y0=i - 0.5, x1=panel_cols - 0.5, y1=i - 0.5,
+            line=dict(color=GRID_COLOR, width=0.5),
+            layer='below'
         ))
     return shapes
 
