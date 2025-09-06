@@ -53,8 +53,8 @@ def render_defect_view(display_df, quadrant_selection, panel_rows, panel_cols):
             defect_traces = create_defect_traces(df)
             for trace in defect_traces: fig.add_trace(trace)
 
-        tick_labels_x = list(range(panel_cols)) + list(range(panel_cols))
-        tick_labels_y = list(range(panel_rows)) + list(range(panel_rows))
+        tick_labels_x = list(range(2 * panel_cols))
+        tick_labels_y = list(range(2 * panel_rows))
 
         fig.update_layout(
             title=dict(text=f"Panel Defect Map - Quadrant: {quadrant_selection} ({len(display_df)} Defects)", font=dict(color=TEXT_COLOR)),
