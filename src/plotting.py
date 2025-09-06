@@ -11,37 +11,35 @@ from src.config import PANEL_COLOR, GRID_COLOR, defect_style_map
 # --- VISUALIZATION FUNCTIONS ---
 # ==============================================================================
 
-def create_dynamic_grid(panel_rows, panel_cols, gap_cells, figure_width, figure_height, margin):
+def create_dynamic_grid(panel_rows, panel_cols, gap_size_relative=0.1):
     """
-    Generates shapes for a dynamic grid based on figure size, including panels and a boundary.
-    This function replicates the logic from the user's provided script to create a
-    dynamically sized grid layout.
+    Generates shapes for a dynamic grid using relative coordinates.
+    The entire 2x2 grid is mapped to a coordinate system where the
+    width and height are determined by the number of cells and gaps.
     """
     # --- Configuration ---
     NUM_PANELS_X = 2
     NUM_PANELS_Y = 2
 
-    # --- Step 1: Dynamically Calculate CELL_SIZE ---
-    plottable_width_px = figure_width - margin['l'] - margin['r']
-    plottable_height_px = figure_height - margin['t'] - margin['b']
-    total_cell_units_x = (NUM_PANELS_X * panel_cols) + (NUM_PANELS_X + 1) * gap_cells
-    total_cell_units_y = (NUM_PANELS_Y * panel_rows) + (NUM_PANELS_Y + 1) * gap_cells
-    cell_size_for_width = plottable_width_px / total_cell_units_x
-    cell_size_for_height = plottable_height_px / total_cell_units_y
-    cell_size = min(cell_size_for_width, cell_size_for_height)
+    # --- Step 1: Define dimensions in relative units ---
+    # Treat each cell as 1 unit. The gap is a fraction of this.
+    cell_size = 1.0
+    gap_size_units = cell_size * gap_size_relative
 
-    # --- Step 2: Calculate Scaled Dimensions ---
+    # --- Step 2: Calculate panel and total dimensions ---
     panel_width_units = panel_cols * cell_size
     panel_height_units = panel_rows * cell_size
-    gap_size_units = gap_cells * cell_size
+    total_width = (NUM_PANELS_X * panel_width_units) + (NUM_PANELS_X - 1) * gap_size_units
+    total_height = (NUM_PANELS_Y * panel_height_units) + (NUM_PANELS_Y - 1) * gap_size_units
+
     shapes = []
 
     # --- Step 3: Draw the Four Central Panels and Their Grids ---
     panel_origins = [
-        (0, 0), # Q1
-        (panel_width_units + gap_size_units, 0), # Q2
-        (0, panel_height_units + gap_size_units), # Q3
-        (panel_width_units + gap_size_units, panel_height_units + gap_size_units) # Q4
+        (0, panel_height_units + gap_size_units), # Q1 (Top-Left)
+        (panel_width_units + gap_size_units, panel_height_units + gap_size_units), # Q2 (Top-Right)
+        (0, 0), # Q3 (Bottom-Left)
+        (panel_width_units + gap_size_units, 0)  # Q4 (Bottom-Right)
     ]
 
     for x_start, y_start in panel_origins:
@@ -50,7 +48,7 @@ def create_dynamic_grid(panel_rows, panel_cols, gap_cells, figure_width, figure_
             type="rect",
             x0=x_start, y0=y_start,
             x1=x_start + panel_width_units, y1=y_start + panel_height_units,
-            line=dict(color=GRID_COLOR, width=3),
+            line=dict(color=GRID_COLOR, width=2),
             fillcolor=PANEL_COLOR,
             layer='below'
         ))
@@ -73,42 +71,27 @@ def create_dynamic_grid(panel_rows, panel_cols, gap_cells, figure_width, figure_
                 layer='below'
             ))
 
-    # --- Step 4: Draw the Solid Outer Boundary Frame ---
-    total_panel_width = (NUM_PANELS_X * panel_width_units) + (NUM_PANELS_X - 1) * gap_size_units
-    total_panel_height = (NUM_PANELS_Y * panel_height_units) + (NUM_PANELS_Y - 1) * gap_size_units
-
-    shapes.insert(0, go.layout.Shape(
-        type="rect",
-        x0=-gap_size_units,
-        y0=-gap_size_units,
-        x1=total_panel_width + gap_size_units,
-        y1=total_panel_height + gap_size_units,
-        fillcolor=PANEL_COLOR,
-        line_width=0,
-        layer='below'
-    ))
-
-    # --- Step 5: Prepare return dictionary ---
-    # The tick positions need to be calculated for the main app to use.
+    # --- Step 4: Prepare return dictionary ---
+    # The tick positions are also relative to the new coordinate system
     x_tick_pos = (
         [i * cell_size + (cell_size / 2) for i in range(panel_cols)] +
-        [i * cell_size + (cell_size / 2) + panel_width_units + gap_size_units for i in range(panel_cols)]
+        [panel_width_units + gap_size_units + i * cell_size + (cell_size / 2) for i in range(panel_cols)]
     )
     y_tick_pos = (
         [i * cell_size + (cell_size / 2) for i in range(panel_rows)] +
-        [i * cell_size + (cell_size / 2) + panel_height_units + gap_size_units for i in range(panel_rows)]
+        [panel_height_units + gap_size_units + i * cell_size + (cell_size / 2) for i in range(panel_rows)]
     )
 
     layout_data = {
         "shapes": shapes,
         "cell_size": cell_size,
-        "x_axis_range": [-gap_size_units, total_panel_width + gap_size_units],
-        "y_axis_range": [-gap_size_units, total_panel_height + gap_size_units],
+        "x_axis_range": [0, total_width],
+        "y_axis_range": [0, total_height],
         "x_tick_pos": x_tick_pos,
         "y_tick_pos": y_tick_pos,
-        "total_width": total_panel_width,
-        "total_height": total_panel_height,
-        "gap_size_units": gap_size_units
+        "gap_size_units": gap_size_units,
+        "panel_width_units": panel_width_units,
+        "panel_height_units": panel_height_units
     }
 
     return layout_data
