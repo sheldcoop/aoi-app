@@ -1,8 +1,10 @@
-streamlit
-pandas
-plotly
-numpy
-openpyxl # Required by pandas to read .xlsx files
-matplotlib # Required for styling the summary table
-xlsxwriter # NEW: Required for creating multi-sheet Excel reports
-streamlit_plotly_events
+streamlit~=1.33.0
+pandas~=2.2.1
+plotly~=5.18.0
+numpy~=1.26.4
+openpyxl~=3.1.2 # Required by pandas to read .xlsx files
+matplotlib~=3.8.3 # Required for styling the summary table
+xlsxwriter~=3.1.9 # NEW: Required for creating multi-sheet Excel reports
+streamlit_plotly_events~=0.0.6
+pytest~=8.1.1
+pytest-mock~=3.12.0

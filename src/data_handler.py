@@ -10,7 +10,7 @@ import numpy as np
 # ==============================================================================
 
 @st.cache_data
-def load_data(uploaded_files, panel_rows, panel_cols, gap_size):
+def load_data(uploaded_files, panel_rows, panel_cols):
     """
     Loads and prepares defect data from one or more user-uploaded files.
     If no files are uploaded, it falls back to generating sample data.

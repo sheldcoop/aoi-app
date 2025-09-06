@@ -161,17 +161,39 @@ def create_defect_traces(df):
     return traces
     
 def create_pareto_trace(df):
-    """Creates the Pareto bar chart trace for a single dataset."""
+    """
+    Creates the traces for a true Pareto chart, including bars and a cumulative line.
+    Returns a list containing the bar trace and the line trace.
+    """
     if df.empty:
-        return go.Bar(name='Pareto')
+        return []
+
+    # 1. Calculate Pareto data
     pareto_data = df['DEFECT_TYPE'].value_counts().reset_index()
     pareto_data.columns = ['Defect Type', 'Count']
-    return go.Bar(
+    pareto_data['Cumulative Percentage'] = (pareto_data['Count'].cumsum() / pareto_data['Count'].sum()) * 100
+
+    # 2. Create the bar chart trace
+    bar_trace = go.Bar(
         x=pareto_data['Defect Type'],
         y=pareto_data['Count'],
-        name='Pareto',
-        marker_color=[defect_style_map.get(dtype, 'grey') for dtype in pareto_data['Defect Type']]
+        name='Count',
+        marker_color=[defect_style_map.get(dtype, 'grey') for dtype in pareto_data['Defect Type']],
+        yaxis='y1' # Assign to the primary y-axis
     )
+
+    # 3. Create the cumulative line trace
+    line_trace = go.Scatter(
+        x=pareto_data['Defect Type'],
+        y=pareto_data['Cumulative Percentage'],
+        name='Cumulative %',
+        mode='lines+markers',
+        line=dict(color='crimson', width=3),
+        marker=dict(size=7),
+        yaxis='y2' # Assign to the secondary y-axis
+    )
+
+    return [bar_trace, line_trace]
 
 def create_grouped_pareto_trace(df):
     """

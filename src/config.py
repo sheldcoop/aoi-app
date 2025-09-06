@@ -8,7 +8,7 @@ PANEL_COLOR = '#E58A60'
 GRID_COLOR = 'black'
 BACKGROUND_COLOR ='white'
 PLOT_AREA_COLOR = '#F4A460'
-TEXT_COLOR = 'black'       # White text for readability on the dark background.
+TEXT_COLOR = 'black'       # Black text for readability on the light background.
 
 # --- Defect Styling (Unchanged) ---
 defect_style_map = {
